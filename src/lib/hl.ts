@@ -34,13 +34,25 @@ export interface Candle {
   v: number
 }
 
+/** Retry transient failures (mostly Hyperliquid's 429 rate limit) with jittered backoff. */
+export async function withRetry<T>(fn: () => Promise<T>, tries = 4): Promise<T> {
+  for (let i = 0; ; i++) {
+    try {
+      return await fn()
+    } catch (e) {
+      if (i >= tries - 1) throw e
+      await new Promise((r) => setTimeout(r, 600 * 2 ** i + Math.random() * 400))
+    }
+  }
+}
+
 export async function fetchCandles(coin: string, interval: CandleInterval, lookbackMs: number): Promise<Candle[]> {
   const endTime = Date.now()
-  const rows = await info.candleSnapshot({ coin, interval, startTime: endTime - lookbackMs, endTime })
+  const rows = await withRetry(() => info.candleSnapshot({ coin, interval, startTime: endTime - lookbackMs, endTime }))
   return rows.map((r) => ({ t: r.t, o: +r.o, h: +r.h, l: +r.l, c: +r.c, v: +r.v }))
 }
 
 export async function fetchFunding(coin: string, lookbackMs: number) {
-  const rows = await info.fundingHistory({ coin, startTime: Date.now() - lookbackMs })
+  const rows = await withRetry(() => info.fundingHistory({ coin, startTime: Date.now() - lookbackMs }))
   return rows.map((r) => ({ t: r.time, rate: +r.fundingRate }))
 }

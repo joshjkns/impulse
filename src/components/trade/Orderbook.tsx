@@ -156,7 +156,7 @@ export function Orderbook({ coin, className }: { coin: string; className?: strin
             </AnimatePresence>
             {view && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex h-full flex-col">
-                <div className="flex flex-1 flex-col justify-end">
+                <div className="flex min-h-0 flex-1 flex-col justify-end overflow-hidden">
                   {view.asks.map((l) => (
                     <BookRow key={`a${l.px}`} l={l} max={view.max} side="ask" dec={dec} fmtSz={fmtSz} usd={usd} />
                   ))}
@@ -166,12 +166,12 @@ export function Orderbook({ coin, className }: { coin: string; className?: strin
                   <span className="num text-right">{view.spread.toFixed(dec)}</span>
                   <span className="num text-right">{view.spreadPct.toFixed(3)}%</span>
                 </div>
-                <div className="flex-1">
+                <div className="min-h-0 flex-1 overflow-hidden">
                   {view.bids.map((l) => (
                     <BookRow key={`b${l.px}`} l={l} max={view.max} side="bid" dec={dec} fmtSz={fmtSz} usd={usd} />
                   ))}
                 </div>
-                <div className="m-2 mt-1 flex h-[20px] overflow-hidden rounded-[5px] text-[11px]">
+                <div className="m-2 mt-1 flex h-[20px] shrink-0 overflow-hidden rounded-[5px] text-[11px]">
                   <motion.div
                     className="flex items-center bg-up-soft pl-2 text-up"
                     animate={{ width: `${view.bidPct}%` }}

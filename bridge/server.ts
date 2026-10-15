@@ -41,6 +41,8 @@ interface Run {
   steps: number
   startedAt: number
   cancelled?: boolean
+  /** The tab that asked; UI tools run there so other open tabs can't answer with stale state. */
+  origin?: WebSocket
 }
 
 const clients = new Set<WebSocket>()
@@ -119,7 +121,7 @@ async function runBridgeTool(name: string, a: Record<string, any>): Promise<unkn
       const m = await resolve(a.coin)
       const s = smartMoney()[m.coin]
       return s
-        ? { coin: m.coin, definition: 'accounts with >= $1M all-time PnL, largest 150 by account value', ...s }
+        ? { coin: m.coin, definition: 'accounts with >= $1M all-time PnL, largest 100 by account value', ...s }
         : { coin: m.coin, note: 'No tracked $1M+ traders hold this market yet (or the first scan is still running).' }
     }
     case 'search_news':
@@ -140,8 +142,12 @@ async function runBridgeTool(name: string, a: Record<string, any>): Promise<unkn
   throw new Error(`Unknown tool ${name}`)
 }
 
+let lastActive: WebSocket | undefined
+
 function runUiTool(run: Run | undefined, name: string, args: unknown) {
-  if (!clients.size) return Promise.reject(new Error('No Impulse tab is open. Ask the user to open the app.'))
+  const open = (w?: WebSocket) => w && w.readyState === w.OPEN && clients.has(w)
+  const target = open(run?.origin) ? run!.origin! : open(lastActive) ? lastActive! : [...clients].pop()
+  if (!target) return Promise.reject(new Error('No Impulse tab is open. Ask the user to open the app.'))
   const callId = Math.random().toString(36).slice(2)
   return new Promise<unknown>((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -149,7 +155,7 @@ function runUiTool(run: Run | undefined, name: string, args: unknown) {
       reject(new Error('The Impulse tab did not respond in time'))
     }, 30_000)
     pendingUi.set(callId, { resolve, reject, timer })
-    broadcast({ type: 'tool_call', callId, runId: run?.id, threadId: run?.threadId, name, args })
+    send(target, { type: 'tool_call', callId, runId: run?.id, threadId: run?.threadId, name, args })
   })
 }
 
@@ -169,6 +175,7 @@ async function handleCall(runId: string, name: string, args: Record<string, unkn
     return result
   } catch (e) {
     const error = e instanceof Error ? e.message : String(e)
+    console.warn(`[tool] ${def.name} failed: ${error}`)
     broadcast({ type: 'step', runId, threadId: run.threadId, step: { ...base, status: 'error', error } })
     throw e
   }
@@ -187,8 +194,8 @@ interface ChatRequest {
   context?: string
 }
 
-function startRun(req: ChatRequest) {
-  const run: Run = { id: req.runId, threadId: req.threadId, steps: 0, startedAt: Date.now() }
+function startRun(req: ChatRequest, origin?: WebSocket) {
+  const run: Run = { id: req.runId, threadId: req.threadId, steps: 0, startedAt: Date.now(), origin }
   runs.set(run.id, run)
   const done = (ok: boolean, extra: Record<string, unknown> = {}) => {
     if (!runs.has(run.id)) return
@@ -352,7 +359,8 @@ wss.on('connection', (ws) => {
     }
     switch (msg.type) {
       case 'chat':
-        startRun(msg as unknown as ChatRequest)
+        lastActive = ws
+        startRun(msg as unknown as ChatRequest, ws)
         break
       case 'cancel':
         cancelRun(String(msg.runId))

@@ -151,8 +151,11 @@ export const useWorkspaces = create<WorkspacesState>()(
           set({ tabs: next, active: get().active === id ? (next[Math.max(0, idx - 1)]?.id ?? '') : get().active })
         },
         reorder(ids) {
-          const map = new Map(get().tabs.map((t) => [t.id, t]))
-          set({ tabs: ids.map((i) => map.get(i)!).filter(Boolean) })
+          // Drag events can carry a stale id list while a tab is being inserted; never drop tabs.
+          const tabs = get().tabs
+          const map = new Map(tabs.map((t) => [t.id, t]))
+          const ordered = ids.map((i) => map.get(i)).filter((t): t is Tab => !!t)
+          set({ tabs: [...ordered, ...tabs.filter((t) => !ids.includes(t.id))] })
         },
         addWidget(tabId, w) {
           const sym = w.coin.includes(':') ? w.coin.split(':')[1] : w.coin

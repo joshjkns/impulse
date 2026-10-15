@@ -1,6 +1,6 @@
 import { LineSeries, type ISeriesApi } from 'lightweight-charts'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CHART_COLORS, ts, useChart } from '@/components/charts/useChart'
+import { CHART_COLORS, PX_FORMAT, ts, useChart } from '@/components/charts/useChart'
 import { useCandles } from '@/lib/useCandles'
 import { useMarket } from '@/store/markets'
 import type { WidgetProps } from './registry'
@@ -35,7 +35,7 @@ export function VolumeProfileWidget({ coin, onReady }: WidgetProps) {
 
   useEffect(() => {
     if (!chart) return
-    series.current = chart.addSeries(LineSeries, { color: CHART_COLORS.blue, lineWidth: 1, priceLineVisible: false })
+    series.current = chart.addSeries(LineSeries, { color: CHART_COLORS.blue, lineWidth: 1, priceLineVisible: false, priceFormat: PX_FORMAT })
   }, [chart])
 
   useEffect(() => {

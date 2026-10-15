@@ -5,7 +5,7 @@ import { LogoPulse } from '@/components/brand/Logo'
 import { INTERVAL_MS, type CandleInterval } from '@/lib/hl'
 import { useCandles } from '@/lib/useCandles'
 import { cn } from '@/lib/utils'
-import { CHART_COLORS, ts, useChart } from './useChart'
+import { CHART_COLORS, PX_FORMAT, ts, useChart } from './useChart'
 
 export interface CandleChartProps {
   coin: string
@@ -48,6 +48,7 @@ export function CandleChart({
       borderVisible: false,
       priceLineColor: '#6b6b74',
       priceLineStyle: 2,
+      priceFormat: PX_FORMAT,
     })
     const v = chart.addSeries(HistogramSeries, { priceScaleId: 'vol', priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false })
     chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 }, visible: false })

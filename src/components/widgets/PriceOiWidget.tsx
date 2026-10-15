@@ -1,6 +1,6 @@
 import { AreaSeries, LineSeries } from 'lightweight-charts'
 import { useEffect, useState } from 'react'
-import { CHART_COLORS, ts, useChart } from '@/components/charts/useChart'
+import { CHART_COLORS, PX_FORMAT, ts, useChart } from '@/components/charts/useChart'
 import { fmtCompact } from '@/lib/format'
 import { useCandles } from '@/lib/useCandles'
 import { useMarket } from '@/store/markets'
@@ -39,7 +39,7 @@ export function PriceOiWidget({ coin, onReady }: WidgetProps) {
 
   useEffect(() => {
     if (!chart) return
-    const price = chart.addSeries(LineSeries, { color: CHART_COLORS.blue, lineWidth: 2, priceLineVisible: false })
+    const price = chart.addSeries(LineSeries, { color: CHART_COLORS.blue, lineWidth: 2, priceLineVisible: false, priceFormat: PX_FORMAT })
     const oiS = chart.addSeries(
       AreaSeries,
       {
@@ -71,7 +71,9 @@ export function PriceOiWidget({ coin, onReady }: WidgetProps) {
       <div className="absolute top-1 left-2 z-10 flex gap-1">
         <LegendChip color={CHART_COLORS.blue}>{m?.symbol ?? coin}</LegendChip>
       </div>
-      <div className="absolute bottom-9 left-2 z-10 text-[10.5px] text-fg-2">Open interest{oi.length < 2 && ' · live (history builds while the bridge runs)'}</div>
+      <div className="absolute bottom-[86px] left-2 z-10 text-[10.5px] text-fg-2" title={oi.length < 2 ? 'History builds while the bridge runs' : undefined}>
+        Open interest
+      </div>
       <div ref={ref} className="absolute inset-0 top-5" />
     </div>
   )

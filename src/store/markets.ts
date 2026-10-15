@@ -69,6 +69,16 @@ function applyCtx(m: Market, c: PerpCtx): Market {
 }
 
 let started = false
+let retries = 0
+
+/** Resolves once the market list has loaded (UI tools need it to resolve names). */
+export function marketsReady(timeoutMs = 20_000) {
+  return new Promise<void>((resolve, reject) => {
+    if (useMarkets.getState().loaded) return resolve()
+    const t = setTimeout(() => (unsub(), reject(new Error('Market data is still loading; try again in a moment.'))), timeoutMs)
+    const unsub = useMarkets.subscribe((s) => s.loaded && (clearTimeout(t), unsub(), resolve()))
+  })
+}
 
 export const useMarkets = create<MarketsState>((set, get) => ({
   markets: {},
@@ -135,8 +145,11 @@ export const useMarkets = create<MarketsState>((set, get) => ({
         })
       }
     } catch (e) {
+      // Usually a 429 from Hyperliquid's per-IP rate limit; back off and try again.
       started = false
+      retries = Math.min(retries + 1, 5)
       set({ error: e instanceof Error ? e.message : String(e) })
+      setTimeout(() => void get().start(), 1000 * 2 ** retries)
     }
   },
 }))

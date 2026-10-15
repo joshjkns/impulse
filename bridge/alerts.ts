@@ -18,8 +18,8 @@ export interface Alert {
   icon?: 'bell' | 'globe' | 'chart' | 'bolt'
   createdAt: number
   lastFiredAt?: number
-  /** Edge-trigger state: true while the condition holds, so we only fire on transitions. */
-  armed: boolean
+  /** Edge-trigger state: true while the condition holds, so we only fire on transitions. null = not primed yet. */
+  armed: boolean | null
   seen?: string[]
 }
 
@@ -75,7 +75,9 @@ export class AlertEngine {
       armed: false,
     }
     // Prime: don't fire for conditions already true or headlines already published.
-    if (alert.kind === 'news') alert.seen = (await news(alert.query!, 24, 30).catch(() => [])).map((h) => h.url)
+    // If data isn't available yet (first smart-money scan, GDELT hiccup) prime on the first real read instead.
+    if (alert.kind === 'news') alert.seen = await news(alert.query!, 24, 30).then((hs) => hs.map((h) => h.url), () => undefined)
+    else if (alert.kind === 'smart_money' && !smartMoney()[alert.coin!]) alert.armed = null
     else alert.armed = (await this.evaluate(alert)) != null
     this.alerts.push(alert)
     this.save()
@@ -143,7 +145,7 @@ export class AlertEngine {
     for (const a of this.alerts) {
       if (a.kind === 'news' || a.kind === 'smart_money') continue
       const hit = await this.evaluate(a).catch(() => null)
-      if (hit && !a.armed) this.fire(a, hit.title, hit.body)
+      if (hit && a.armed === false) this.fire(a, hit.title, hit.body)
       a.armed = !!hit
     }
     this.save()
@@ -151,8 +153,9 @@ export class AlertEngine {
 
   private async tickSmartMoney() {
     for (const a of this.alerts.filter((x) => x.kind === 'smart_money')) {
+      if (!smartMoney()[a.coin!]) continue
       const hit = await this.evaluate(a).catch(() => null)
-      if (hit && !a.armed) this.fire(a, hit.title, hit.body)
+      if (hit && a.armed === false) this.fire(a, hit.title, hit.body)
       a.armed = !!hit
     }
     this.save()
@@ -163,7 +166,7 @@ export class AlertEngine {
       try {
         const items = await news(a.query!, 6, 15)
         const seen = new Set(a.seen ?? [])
-        const fresh = items.filter((h) => !seen.has(h.url))
+        const fresh = a.seen ? items.filter((h) => !seen.has(h.url)) : []
         if (fresh.length) {
           const top = fresh[0]
           let body = `${top.domain}`

@@ -36,7 +36,8 @@ const AXIS_W = 64
 /** Dollars resting at each price level over time, sampled from the live L2 book since the widget opened. */
 export function OrderbookHeatmapWidget({ coin, onReady }: WidgetProps) {
   const m = useMarket(coin)
-  const book = useBook(coin, 5)
+  // 3 significant figures ≈ 20 levels covering a few percent either side of mid.
+  const book = useBook(coin, 3)
   const snaps = useRef<Snap[]>([])
   const canvas = useRef<HTMLCanvasElement>(null)
   const wrap = useRef<HTMLDivElement>(null)
@@ -98,8 +99,9 @@ export function OrderbookHeatmapWidget({ coin, onReady }: WidgetProps) {
     lo = mid - span
     hi = mid + span
     const yOf = (px: number) => H - ((px - lo) / (hi - lo)) * H
-    const colW = W / Math.max(list.length, 60)
-    const startX = W - colW * list.length
+    // Columns stretch to fill the panel; time compresses as history accumulates.
+    const colW = W / list.length
+    const startX = 0
     const tick = list[0].levels.length > 1 ? Math.abs(list[0].levels[1][0] - list[0].levels[0][0]) || span / 40 : span / 40
     const rowH = Math.max(2, (tick / (hi - lo)) * H)
     const logMax = Math.log1p(maxUsd)
@@ -133,13 +135,15 @@ export function OrderbookHeatmapWidget({ coin, onReady }: WidgetProps) {
       return { y: yOf(px), px }
     }))
     setMidTag({ y: yOf(mid), px: mid })
-    const tl = list.filter((_, i) => i % Math.max(1, Math.floor(list.length / 3)) === 0).slice(1)
-    setTimes(
-      tl.map((s) => ({
-        x: startX + list.indexOf(s) * colW,
-        label: new Date(s.t).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-      })),
-    )
+    const fmt = (t: number) => new Date(t).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+    const labels: { x: number; label: string }[] = []
+    list.forEach((s, i) => {
+      const x = startX + i * colW + colW / 2
+      const label = fmt(s.t)
+      const prev = labels[labels.length - 1]
+      if (x > 24 && x < W - 24 && (!prev || (x - prev.x > 90 && prev.label !== label))) labels.push({ x, label })
+    })
+    setTimes(labels)
   }
 
   const dec = m ? Math.max(0, 6 - m.szDecimals - 0) : 3

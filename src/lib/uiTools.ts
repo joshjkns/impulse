@@ -1,6 +1,6 @@
 import { useAccount } from '@/store/account'
 import { useChat, type ProposedOrder } from '@/store/chat'
-import { resolveCoin, useMarkets } from '@/store/markets'
+import { marketsReady, resolveCoin, useMarkets } from '@/store/markets'
 import { usePrefs, type SortKey } from '@/store/prefs'
 import { useUI } from '@/store/ui'
 import { useWorkspaces, type WidgetKind } from '@/store/workspaces'
@@ -18,6 +18,7 @@ type A = Record<string, any> // eslint-disable-line @typescript-eslint/no-explic
 
 /** Executes "ui" tools requested by the harness via the bridge. Results go back to the agent. */
 export async function runUiTool(name: string, a: A, ctx: { runId?: string; threadId?: string }): Promise<unknown> {
+  await marketsReady()
   const ws = useWorkspaces.getState()
   switch (name) {
     case 'create_workspace': {

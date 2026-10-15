@@ -41,8 +41,10 @@ export const chartTheme: DeepPartial<ChartOptions> = {
     horzLine: { color: '#55555e', style: LineStyle.Dashed, width: 1, labelBackgroundColor: '#2c2c32' },
   },
   handleScale: { axisPressedMouseMove: true },
-  localization: { priceFormatter: (p: number) => fmtPx(p) },
 }
+
+/** Price axis/labels in the terminal's 5-significant-figure style. Apply per price series. */
+export const PX_FORMAT = { type: 'custom' as const, formatter: (p: number) => fmtPx(p), minMove: 0.000001 }
 
 export const ts = (ms: number) => Math.floor(ms / 1000) as UTCTimestamp
 
