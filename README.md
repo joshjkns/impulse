@@ -56,6 +56,7 @@ VITE_WALLETCONNECT_PROJECT_ID=…   # enables WalletConnect / mobile wallets (ex
 
 - **Custom workspaces** sit on a 24 × 24 grid that fills the screen. Drag a widget by its header; drop it on another widget to swap the two, or on open space to place it there. Resize from any edge or corner. Widgets that share an edge resize together, like split panes, and stop at each other's minimum size. Save ▸ Tidy layout goes back to even auto-tiling.
 - **Market tabs** (chart · order book · ticket · positions) have draggable splits. The sizes are shared by every market tab.
+- **The Impulse chat** floats as a window you can drag by its header and resize from any edge or corner (double-click the header to reset). On a workspace, drop it on the right edge to dock it; the docked panel resizes from its left edge, and dragging its header out floats it again. Position and sizes are remembered.
 
 ## The bridge
 

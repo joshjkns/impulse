@@ -37,7 +37,15 @@ export function Composer({ busy, compact, autoFocus }: { busy: boolean; compact?
 
   return (
     <div className={cn(compact ? 'px-2.5 pt-1 pb-2.5' : 'px-3 pt-2 pb-3')}>
-      <div className="rounded-[16px] bg-field ring-1 ring-[#2c2c33] transition-shadow focus-within:ring-[#3a3a44]">
+      <div
+        // The whole box is the text field's hit area, not just the line of text.
+        onMouseDown={(e) => {
+          if (e.target === ref.current || (e.target as HTMLElement).closest('button')) return
+          e.preventDefault()
+          ref.current?.focus()
+        }}
+        className="cursor-text rounded-[16px] bg-field ring-1 ring-[#2c2c33] transition-shadow focus-within:ring-[#3a3a44]"
+      >
         <textarea
           ref={ref}
           rows={1}

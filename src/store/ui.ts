@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 export interface AppNotification {
   id: string
@@ -55,3 +56,44 @@ export const useUI = create<UIState>((set, get) => ({
   },
   dismiss: (id) => set({ notifications: get().notifications.filter((n) => n.id !== id) }),
 }))
+
+export interface Rect {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+export const CHAT_MIN = { w: 380, h: 420 }
+export const DOCK_MIN = 260
+export const DOCK_DEFAULT = 300
+
+/** Where the floating chat window sits and how wide the docked panel is. Remembered across launches. */
+export const useChatLayout = create<{
+  /** Floating window bounds; unset means centred at the default size. */
+  rect?: Rect
+  dockW: number
+  /** Set when the docked panel is dragged out: the window opens under the pointer and keeps following it. */
+  pendingDrag?: { x: number; y: number }
+  set: (p: Partial<{ rect?: Rect; dockW: number; pendingDrag?: { x: number; y: number } }>) => void
+}>()(
+  persist((set) => ({ dockW: DOCK_DEFAULT, set: (p) => set(p) }), {
+    name: 'impulse.chat.layout',
+    partialize: (s) => ({ rect: s.rect, dockW: s.dockW }),
+  }),
+)
+
+export function defaultChatRect(): Rect {
+  const w = Math.min(1020, Math.round(window.innerWidth * 0.92))
+  const h = Math.min(680, Math.round(window.innerHeight * 0.86))
+  return { x: Math.round((window.innerWidth - w) / 2), y: Math.round((window.innerHeight - h) / 2), w, h }
+}
+
+/** Keeps a window on screen: no bigger than the viewport, and fully inside it. */
+export function clampRect(r: Rect): Rect {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const w = Math.max(Math.min(CHAT_MIN.w, vw - 16), Math.min(r.w, vw - 16))
+  const h = Math.max(Math.min(CHAT_MIN.h, vh - 16), Math.min(r.h, vh - 16))
+  return { w, h, x: Math.min(Math.max(8, r.x), vw - w - 8), y: Math.min(Math.max(8, r.y), vh - h - 8) }
+}
