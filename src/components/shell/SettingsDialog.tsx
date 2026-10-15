@@ -1,165 +1,85 @@
-import { Check, Copy, ExternalLink, RefreshCw } from 'lucide-react'
-import { motion } from 'motion/react'
-import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { bridgeSend, useBridgeStore } from '@/lib/bridge'
+import { Bell, Bot, Database, Monitor, Plug, SlidersHorizontal, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
+import { AccountsPage, WalletPage } from '@/components/settings/AccountPages'
+import { AgentPage, IntegrationsPage } from '@/components/settings/AgentPages'
+import { DataPage, DisplayPage, NotificationsPage, TradingPage } from '@/components/settings/PreferencePages'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { usePrefs } from '@/store/prefs'
-import { useUI } from '@/store/ui'
+import { useUI, type SettingsPage } from '@/store/ui'
+
+const GROUPS: { title: string; items: { id: SettingsPage; label: string; icon: LucideIcon; page: () => React.ReactNode }[] }[] = [
+  {
+    title: 'Account',
+    items: [
+      { id: 'wallet', label: 'Wallet', icon: Wallet, page: WalletPage },
+      { id: 'accounts', label: 'Accounts', icon: Users, page: AccountsPage },
+    ],
+  },
+  {
+    title: 'Preferences',
+    items: [
+      { id: 'trading', label: 'Trading', icon: SlidersHorizontal, page: TradingPage },
+      { id: 'display', label: 'Display', icon: Monitor, page: DisplayPage },
+      { id: 'notifications', label: 'Notifications', icon: Bell, page: NotificationsPage },
+    ],
+  },
+  {
+    title: 'AI',
+    items: [
+      { id: 'agent', label: 'AI agent', icon: Bot, page: AgentPage },
+      { id: 'integrations', label: 'Integrations', icon: Plug, page: IntegrationsPage },
+    ],
+  },
+  {
+    title: 'Advanced',
+    items: [{ id: 'data', label: 'Data & storage', icon: Database, page: DataPage }],
+  },
+]
+
+const ITEMS = GROUPS.flatMap((g) => g.items)
 
 export function SettingsDialog() {
   const open = useUI((s) => s.settingsOpen)
-  const setOpen = useUI((s) => s.openSettings)
-  const { harnesses, connected, settings } = useBridgeStore()
-  const { harness, harnessModel, set } = usePrefs()
-  const [custom, setCustom] = useState(settings.customCommand)
-  const [ntfy, setNtfy] = useState(settings.ntfyTopic)
-  const [perm, setPerm] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'denied')
-
-  useEffect(() => {
-    setCustom(settings.customCommand)
-    setNtfy(settings.ntfyTopic)
-  }, [settings])
-
-  const save = (patch: Partial<typeof settings>) => {
-    bridgeSend({ type: 'settings', settings: patch })
-    useBridgeStore.setState({ settings: { ...settings, ...patch } })
-  }
-
-  const mcpCmd = 'claude mcp add impulse -- node "$(pwd)/bridge/mcp.ts"'
+  const page = useUI((s) => s.settingsPage)
+  const openSettings = useUI((s) => s.openSettings)
+  const current = ITEMS.find((i) => i.id === page) ?? ITEMS[0]
+  const Current = current.page
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-h-[86vh] overflow-y-auto border-0 bg-[#18181c] ring-1 ring-white/[0.07] sm:max-w-[560px]">
-        <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
-          <DialogDescription>Impulse runs on the AI harness you already use. Nothing is sent to an Impulse server.</DialogDescription>
-        </DialogHeader>
+    <Dialog open={open} onOpenChange={(o) => openSettings(o)}>
+      <DialogContent className="flex h-[min(640px,88vh)] gap-0 overflow-hidden border-0 bg-[#18181c] p-0 ring-1 ring-white/[0.07] sm:max-w-[820px]">
+        <DialogTitle className="sr-only">Settings</DialogTitle>
+        <DialogDescription className="sr-only">Wallet, accounts, trading, display, notifications and AI settings.</DialogDescription>
 
-        <Section
-          title="AI harness"
-          aside={
-            <button onClick={() => bridgeSend({ type: 'detect' })} className="flex items-center gap-1 text-[11.5px] text-fg-2 hover:text-fg" disabled={!connected}>
-              <RefreshCw className="size-3" /> Rescan
-            </button>
-          }
-        >
-          {!connected && (
-            <div className="mb-2 rounded-[10px] bg-down-soft/50 px-3 py-2 text-[12px] text-[#ff9aa9]">
-              Bridge offline. Run <code className="rounded bg-black/30 px-1">pnpm bridge</code> in the project folder (or <code className="rounded bg-black/30 px-1">pnpm dev</code>).
+        <nav className="flex w-[200px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-white/[0.05] bg-black/15 p-3 max-sm:w-[64px]">
+          <div className="px-2 pt-1 text-[14px] font-medium text-fg max-sm:hidden">Settings</div>
+          {GROUPS.map((g) => (
+            <div key={g.title}>
+              <div className="mb-1 px-2 text-[10.5px] font-medium tracking-wide text-fg-3 uppercase max-sm:hidden">{g.title}</div>
+              {g.items.map((i) => (
+                <button
+                  key={i.id}
+                  onClick={() => openSettings(true, i.id)}
+                  className={cn('relative flex w-full items-center gap-2.5 rounded-[8px] px-2 py-1.5 text-[12.5px] transition-colors max-sm:justify-center', page === i.id ? 'text-fg' : 'text-fg-2 hover:text-fg')}
+                  title={i.label}
+                >
+                  {page === i.id && <motion.span layoutId="settings-nav" className="absolute inset-0 rounded-[8px] bg-white/[0.06]" transition={{ type: 'spring', stiffness: 700, damping: 50 }} />}
+                  <i.icon className="relative size-4 shrink-0" />
+                  <span className="relative max-sm:hidden">{i.label}</span>
+                </button>
+              ))}
             </div>
-          )}
-          <div className="space-y-1">
-            {[...harnesses, { id: 'custom', name: 'Custom command', installed: true, mcp: true, homepage: '', version: 'any CLI' }].map((h) => (
-              <button
-                key={h.id}
-                disabled={!h.installed}
-                onClick={() => set({ harness: h.id })}
-                className={cn(
-                  'relative flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left transition-colors',
-                  harness === h.id ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]',
-                  !h.installed && 'opacity-45',
-                )}
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2 text-[13px] text-fg">
-                    {h.name}
-                    <span className={cn('rounded px-1 text-[10px]', h.mcp ? 'bg-brand-soft text-brand' : 'bg-chip text-fg-2')}>{h.mcp ? 'MCP' : 'CLI tools'}</span>
-                  </span>
-                  <span className="block truncate text-[11px] text-fg-3">{h.installed ? (h.version ?? 'installed') : 'not installed'}</span>
-                </span>
-                {!h.installed && h.homepage && (
-                  <a href={h.homepage} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-fg-3 hover:text-fg">
-                    <ExternalLink className="size-3.5" />
-                  </a>
-                )}
-                {harness === h.id && (
-                  <motion.span layoutId="harness-check" className="text-brand">
-                    <Check className="size-4" />
-                  </motion.span>
-                )}
-              </button>
-            ))}
-          </div>
-          <label className="mt-3 block text-[11.5px] text-fg-2">
-            Model override <span className="text-fg-3">(optional, passed as the harness's model flag)</span>
-            <input
-              value={harnessModel}
-              onChange={(e) => set({ harnessModel: e.target.value })}
-              placeholder="default"
-              className="mt-1 h-9 w-full rounded-[9px] bg-field px-3 text-[12.5px] text-fg ring-1 ring-line outline-none placeholder:text-fg-3 focus:ring-[#3a3a42]"
-            />
-          </label>
-          {harness === 'custom' && (
-            <label className="mt-3 block text-[11.5px] text-fg-2">
-              Custom command <span className="text-fg-3">— runs in a shell; prompt in $IMPULSE_PROMPT, MCP config at $IMPULSE_MCP_CONFIG</span>
-              <input
-                value={custom}
-                onChange={(e) => setCustom(e.target.value)}
-                onBlur={() => save({ customCommand: custom })}
-                placeholder={'kimi --print -p "$IMPULSE_PROMPT"'}
-                className="num mt-1 h-9 w-full rounded-[9px] bg-field px-3 text-[12px] text-fg ring-1 ring-line outline-none placeholder:text-fg-3 focus:ring-[#3a3a42]"
-              />
-            </label>
-          )}
-        </Section>
+          ))}
+        </nav>
 
-        <Section title="Notifications">
-          <div className="flex items-center justify-between gap-3 text-[12.5px]">
-            <span className="text-fg">Desktop notifications</span>
-            <button
-              disabled={perm !== 'default'}
-              onClick={() => Notification.requestPermission().then(setPerm)}
-              className="rounded-[8px] bg-chip px-2.5 py-1 text-[12px] text-fg disabled:opacity-60"
-            >
-              {perm === 'granted' ? 'Enabled' : perm === 'denied' ? 'Blocked in browser' : 'Enable'}
-            </button>
-          </div>
-          <label className="mt-3 block text-[11.5px] text-fg-2">
-            Phone push via <a className="underline" href="https://ntfy.sh" target="_blank" rel="noreferrer">ntfy</a> topic — install the ntfy app and subscribe to the same topic
-            <div className="mt-1 flex gap-2">
-              <input
-                value={ntfy}
-                onChange={(e) => setNtfy(e.target.value.replace(/[^\w-]/g, ''))}
-                onBlur={() => save({ ntfyTopic: ntfy })}
-                placeholder="impulse-yourname-7f3a"
-                className="h-9 flex-1 rounded-[9px] bg-field px-3 text-[12.5px] text-fg ring-1 ring-line outline-none placeholder:text-fg-3 focus:ring-[#3a3a42]"
-              />
-              <button
-                disabled={!ntfy || !connected}
-                onClick={() => (save({ ntfyTopic: ntfy }), bridgeSend({ type: 'test_notification' }), toast.success('Test sent to your phone'))}
-                className="rounded-[9px] bg-chip px-3 text-[12px] text-fg disabled:opacity-40"
-              >
-                Test
-              </button>
-            </div>
-          </label>
-        </Section>
-
-        <Section title="Use Impulse tools elsewhere">
-          <p className="text-[12px] text-fg-2">The bridge exposes its tools as an MCP server, so you can also use them from your harness directly:</p>
-          <button
-            onClick={() => (void navigator.clipboard.writeText(mcpCmd), toast.success('Copied'))}
-            className="num mt-2 flex w-full items-center gap-2 rounded-[9px] bg-black/30 px-3 py-2 text-left text-[11.5px] text-fg"
-          >
-            <span className="flex-1 truncate">{mcpCmd}</span>
-            <Copy className="size-3.5 text-fg-2" />
-          </button>
-        </Section>
+        <div className="min-w-0 flex-1 overflow-y-auto px-6 py-5">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={current.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}>
+              <Current />
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function Section({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <section className="border-t border-white/[0.05] pt-4">
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-[12px] font-medium tracking-wide text-fg-2 uppercase">{title}</h3>
-        {aside}
-      </div>
-      {children}
-    </section>
   )
 }

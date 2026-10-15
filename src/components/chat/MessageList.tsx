@@ -5,6 +5,7 @@ import { OrderProposal } from '@/components/chat/OrderProposal'
 import { cn } from '@/lib/utils'
 import type { Message, Step, Thread } from '@/store/chat'
 import { Bubble, TypingBubble } from './Bubble'
+import { fmtClock } from '@/lib/format'
 import { RichText } from './RichText'
 
 const ALERT_ICON = { bell: Bell, globe: Globe, chart: LineChart, bolt: Zap }
@@ -12,7 +13,7 @@ const ALERT_ICON = { bell: Bell, globe: Globe, chart: LineChart, bolt: Zap }
 function dayLabel(t: number) {
   const d = new Date(t)
   const today = new Date()
-  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  const time = fmtClock(t)
   if (d.toDateString() === today.toDateString()) return `Today ${time}`
   return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} ${time}`
 }

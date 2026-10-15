@@ -132,7 +132,7 @@ function PlusMenu() {
           </button>
         ))}
         <button
-          onClick={() => (openSettings(), setOpen(false))}
+          onClick={() => (openSettings(true, 'agent'), setOpen(false))}
           className="mt-1 flex w-full items-center gap-2 rounded-lg border-t border-line px-2 py-1.5 text-[12.5px] text-fg-2 hover:bg-hover hover:text-fg"
         >
           <Settings2 className="size-3.5" /> Harness settings
