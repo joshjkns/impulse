@@ -17,7 +17,7 @@ import { Button, CopyButton, DangerButton, Group, Notice, Page, Row } from './co
 
 const explorer = (a: string) => `https://app.hyperliquid.xyz/explorer/address/${a}`
 
-function Avatar({ address, className }: { address: string; className?: string }) {
+export function Avatar({ address, className }: { address: string; className?: string }) {
   // Deterministic gradient per address so saved accounts are easy to tell apart.
   const h = parseInt(address.slice(2, 8), 16) % 360
   return (
@@ -36,7 +36,14 @@ export function WalletPage() {
   const { data: wallet } = useWalletClient()
   const watching = useUI((s) => s.watching)
   const watch = useUI((s) => s.watch)
+  const openSettings = useUI((s) => s.openSettings)
   const acct = useAccount()
+  // RainbowKit's modal renders outside this dialog, and Radix blocks pointer events outside
+  // an open modal, so close settings first and open the wallet picker once it's gone.
+  const connect = () => {
+    openSettings(false)
+    setTimeout(() => openConnectModal?.(), 150)
+  }
   const [transfer, setTransfer] = useState<'deposit' | 'withdraw' | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -90,7 +97,7 @@ export function WalletPage() {
               <div className="text-[13px] text-fg">No wallet connected</div>
               <div className="mt-1 text-[12px] text-fg-3">Connect a wallet on Arbitrum to trade, deposit and withdraw.</div>
             </div>
-            <Button tone="primary" onClick={() => openConnectModal?.()}>
+            <Button tone="primary" onClick={connect}>
               Connect wallet
             </Button>
           </div>
@@ -115,7 +122,7 @@ export function WalletPage() {
               {chainId !== arbitrum.id && <Button onClick={() => switchChain({ chainId: arbitrum.id })}>Switch to Arbitrum</Button>}
             </div>
             <Row label="Change wallet" hint="Disconnect and pick another wallet or account.">
-              <Button onClick={() => (disconnect(), setTimeout(() => openConnectModal?.(), 150))}>
+              <Button onClick={() => (disconnect(), connect())}>
                 <Repeat className="size-3.5" /> Switch
               </Button>
               <Button tone="danger" onClick={() => disconnect()}>

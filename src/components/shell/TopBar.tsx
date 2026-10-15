@@ -2,6 +2,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Eye, X } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router'
 import { LogoMark } from '@/components/brand/Logo'
+import { Avatar } from '@/components/settings/AccountPages'
 import { Kbd } from '@/components/common'
 import { shortAddr } from '@/lib/format'
 import { usePrefs } from '@/store/prefs'
@@ -71,10 +72,12 @@ function WatchingChip() {
   )
 }
 
+/** Connect when signed out; otherwise the avatar opens Settings → Wallet. */
 function AccountButton() {
+  const openSettings = useUI((s) => s.openSettings)
   return (
     <ConnectButton.Custom>
-      {({ account, mounted, openConnectModal, openAccountModal }) => {
+      {({ account, mounted, openConnectModal }) => {
         if (!mounted) return <div className="size-[30px]" />
         if (!account)
           return (
@@ -87,18 +90,12 @@ function AccountButton() {
           )
         return (
           <button
-            onClick={openAccountModal}
-            className="size-[30px] overflow-hidden rounded-[9px] ring-1 ring-white/10 transition-transform active:scale-95"
-            title={account.displayName}
+            onClick={() => openSettings(true, 'wallet')}
+            className="size-[30px] cursor-pointer overflow-hidden rounded-[9px] transition-[transform,box-shadow] hover:ring-2 hover:ring-white/20 active:scale-95"
+            title={`${account.displayName} · Wallet settings`}
+            aria-label="Wallet settings"
           >
-            {account.ensAvatar ? (
-              <img src={account.ensAvatar} alt="" className="size-full object-cover" />
-            ) : (
-              <span
-                className="block size-full"
-                style={{ background: `conic-gradient(from 200deg, #f5a524, #f0405a, #9f7cf5, #2e84f5, #f5a524)` }}
-              />
-            )}
+            {account.ensAvatar ? <img src={account.ensAvatar} alt="" className="size-full object-cover" /> : <Avatar address={account.address} className="size-full rounded-none ring-0" />}
           </button>
         )
       }}
