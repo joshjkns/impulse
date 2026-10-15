@@ -113,7 +113,22 @@ export function bridgeSend(msg: unknown) {
 
 type Msg = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 
+/** Extra handlers for message families owned elsewhere (the browser-wallet relay). */
+const listeners = new Set<(msg: Msg) => void>()
+const openHooks = new Set<() => void>()
+export function onBridgeMessage(fn: (msg: Msg) => void) {
+  listeners.add(fn)
+  return () => void listeners.delete(fn)
+}
+/** Runs on every (re)connect, e.g. to re-register with the bridge. */
+export function onBridgeOpen(fn: () => void) {
+  openHooks.add(fn)
+  if (ws?.readyState === WebSocket.OPEN) fn()
+  return () => void openHooks.delete(fn)
+}
+
 function handle(msg: Msg) {
+  listeners.forEach((fn) => fn(msg))
   const chat = useChat.getState()
   switch (msg.type) {
     case 'hello':
@@ -186,6 +201,7 @@ function connect() {
   ws.onopen = () => {
     retry = 0
     useBridgeStore.setState({ connected: true })
+    openHooks.forEach((fn) => fn())
   }
   ws.onmessage = (e) => {
     try {

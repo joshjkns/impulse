@@ -19,7 +19,7 @@ export function TopBar() {
   const { pathname } = useLocation()
   const openCommand = useUI((s) => s.openCommand)
   return (
-    <header className="flex h-11 shrink-0 items-center gap-6 pr-3 pl-4">
+    <header className="app-titlebar flex h-11 shrink-0 items-center gap-6 pr-3 pl-4">
       <NavLink to="/" className="text-fg transition-opacity hover:opacity-80" aria-label="Impulse home">
         <LogoMark className="size-[26px]" />
       </NavLink>

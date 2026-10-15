@@ -30,7 +30,7 @@ const LABEL: Record<string, string> = {
 }
 
 export function TabBar() {
-  const { tabs, active, reorder, close, createCustom, addWidget, duplicate } = useWorkspaces()
+  const { tabs, active, reorder, close, createCustom, addWidget, duplicate, retile } = useWorkspaces()
   const nav = useNavigate()
   const openCommand = useUI((s) => s.openCommand)
   const chatMode = useUI((s) => s.chatMode)
@@ -106,7 +106,10 @@ export function TabBar() {
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuItem onSelect={() => toast.success('Workspace saved', { description: 'Layouts are saved automatically on this device.' })}>Save layout</DropdownMenuItem>
             {current?.kind === 'custom' && (
-              <DropdownMenuItem onSelect={() => { const id = duplicate(current.id); if (id) go(id) }}>Duplicate workspace</DropdownMenuItem>
+              <>
+                <DropdownMenuItem onSelect={() => { const id = duplicate(current.id); if (id) go(id) }}>Duplicate workspace</DropdownMenuItem>
+                <DropdownMenuItem disabled={current.autoLayout} onSelect={() => retile(current.id)}>Tidy layout</DropdownMenuItem>
+              </>
             )}
             <DropdownMenuItem
               onSelect={() => {

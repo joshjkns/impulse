@@ -40,8 +40,8 @@ export function WidgetFrame({ tabId, widget }: { tabId: string; widget: Widget }
       transition={{ duration: 0.22, ease: [0.2, 0.9, 0.1, 1] }}
       className="group flex h-full flex-col overflow-hidden rounded-[12px] bg-panel"
     >
-      <header className="flex shrink-0 items-start gap-1.5 px-2 pt-2.5 pb-1">
-        <GripVertical className="drag-handle mt-[3px] size-3.5 shrink-0 cursor-grab text-fg-3 active:cursor-grabbing" />
+      <header className="drag-handle flex shrink-0 cursor-grab items-start gap-1.5 px-2 pt-2.5 pb-1 active:cursor-grabbing">
+        <GripVertical className="mt-[3px] size-3.5 shrink-0 text-fg-3 transition-colors group-hover:text-fg-2" />
         <div className="min-w-0 flex-1">
           {editing ? (
             <input
@@ -49,14 +49,14 @@ export function WidgetFrame({ tabId, widget }: { tabId: string; widget: Widget }
               defaultValue={widget.title}
               onBlur={(e) => (update(tabId, widget.id, { title: e.target.value || widget.title }), setEditing(false))}
               onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-              className="w-full rounded bg-field px-1 text-[13px] text-fg outline-none ring-1 ring-line"
+              className="no-drag w-full cursor-text rounded bg-field px-1 text-[13px] text-fg outline-none ring-1 ring-line"
             />
           ) : (
-            <h3 className="truncate text-[13px] text-fg">{drawing ? widget.subtitle.replace(/\.$/, '') : widget.title}</h3>
+            <h3 className="truncate text-[13px] text-fg" onDoubleClick={() => !drawing && setEditing(true)}>{drawing ? widget.subtitle.replace(/\.$/, '') : widget.title}</h3>
           )}
           <p className="truncate text-[11px] text-fg-2">{drawing ? 'Impulse is drawing it from live market data.' : widget.subtitle}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-0.5 text-fg-2">
+        <div className="no-drag flex shrink-0 cursor-default items-center gap-0.5 text-fg-2">
           {!drawing && (
             <>
               <Action onClick={() => setEditing(true)} label="Rename">
@@ -75,7 +75,7 @@ export function WidgetFrame({ tabId, widget }: { tabId: string; widget: Widget }
           </Action>
         </div>
       </header>
-      <div className="relative min-h-0 flex-1">
+      <div className="widget-body relative min-h-0 flex-1">
         <AnimatePresence>
           {drawing && (
             <motion.div key="drawing" exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.18 }} className="absolute inset-0 z-10 grid place-items-center bg-panel">

@@ -9,19 +9,22 @@ import {
 } from '@rainbow-me/rainbowkit/wallets'
 import { createConfig, http } from 'wagmi'
 import { arbitrum } from 'wagmi/chains'
+import { browserWallet } from './browserWallet'
 
 /** WalletConnect needs a cloud project id; without one we only offer injected/extension wallets. */
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string | undefined
 
+/** Set by the Electron preload. Extensions can't load in the app, so it gets the browser relay instead. */
+export const isDesktop = typeof window !== 'undefined' && 'impulseDesktop' in window
+
+const webWallets = projectId
+  ? [rabbyWallet, metaMaskWallet, coinbaseWallet, rainbowWallet, walletConnectWallet]
+  : [injectedWallet, rabbyWallet, coinbaseWallet]
+// In the app: extension wallets go through the user's browser; Coinbase uses its popup; the rest pair by QR.
+const desktopWallets = projectId ? [browserWallet, coinbaseWallet, walletConnectWallet, metaMaskWallet, rainbowWallet] : [browserWallet, coinbaseWallet]
+
 const connectors = connectorsForWallets(
-  [
-    {
-      groupName: 'Popular',
-      wallets: projectId
-        ? [rabbyWallet, metaMaskWallet, coinbaseWallet, rainbowWallet, walletConnectWallet]
-        : [injectedWallet, rabbyWallet, coinbaseWallet],
-    },
-  ],
+  [{ groupName: isDesktop ? 'Desktop' : 'Popular', wallets: isDesktop ? desktopWallets : webWallets }],
   { appName: 'Impulse', projectId: projectId ?? 'impulse-local' },
 )
 

@@ -21,7 +21,7 @@ export function PortfolioPanel() {
   const openSettings = useUI((s) => s.openSettings)
 
   return (
-    <aside className="flex h-full shrink-0">
+    <aside className="app-sidepanel flex h-full shrink-0">
       <AnimatePresence initial={false}>
         {open && (
           <motion.div

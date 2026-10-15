@@ -72,9 +72,31 @@ export type Tab =
   | { id: string; kind: 'market'; coin: string }
   | { id: string; kind: 'custom'; title: string; widgets: Widget[]; layout: GridItem[]; autoLayout: boolean; threadId?: string }
 
-/** The custom grid is always 12 x 12 units; rowHeight is derived from the available height. */
-export const GRID_COLS = 12
-export const GRID_ROWS = 12
+/**
+ * The custom grid is 24 x 24 units per screen; rowHeight is derived from the available height, so a
+ * layout always fills the viewport. Items can sit below the fold, which scrolls.
+ */
+export const GRID_COLS = 24
+export const GRID_ROWS = 24
+
+/** Smallest a widget can be resized to, in grid units. */
+export function minSize(kind: WidgetKind) {
+  if (kind === 'note' || kind === 'positions') return { minW: 4, minH: 3 }
+  if (kind === 'orderbook' || kind === 'trades') return { minW: 4, minH: 6 }
+  return { minW: 5, minH: 5 }
+}
+
+const overlaps = (a: Omit<GridItem, 'i'>, b: Omit<GridItem, 'i'>) =>
+  a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+
+/** First free w×h slot, scanning row-major from the top; falls back to below everything. */
+export function findSlot(layout: GridItem[], w: number, h: number): { x: number; y: number } {
+  w = Math.min(w, GRID_COLS)
+  const bottom = layout.reduce((m, l) => Math.max(m, l.y + l.h), 0)
+  for (let y = 0; y + h <= Math.max(GRID_ROWS, bottom); y++)
+    for (let x = 0; x + w <= GRID_COLS; x++) if (!layout.some((l) => overlaps(l, { x, y, w, h }))) return { x, y }
+  return { x: 0, y: bottom }
+}
 
 /** Even, row-major tiling: 1 → full, 2 → halves, 3-4 → 2x2, 5-6 → 3x2, 7-9 → 3x3. */
 export function autoLayout(ids: string[]): GridItem[] {
@@ -108,6 +130,8 @@ interface WorkspacesState {
   updateWidget: (tabId: string, widgetId: string, patch: Partial<Widget>) => void
   removeWidget: (tabId: string, widgetId: string) => void
   setLayout: (tabId: string, layout: GridItem[]) => void
+  /** Drop the manual layout and go back to even auto-tiling. */
+  retile: (tabId: string) => void
   duplicate: (tabId: string) => string | undefined
 }
 
@@ -172,7 +196,7 @@ export const useWorkspaces = create<WorkspacesState>()(
             const widgets = [...t.widgets, widget]
             const layout = t.autoLayout
               ? autoLayout(widgets.map((x) => x.id))
-              : [...t.layout, { i: widget.id, x: 0, y: GRID_ROWS, w: 6, h: 6 }]
+              : [...t.layout, { i: widget.id, ...findSlot(t.layout, GRID_COLS / 2, GRID_ROWS / 2), w: GRID_COLS / 2, h: GRID_ROWS / 2 }]
             return { widgets, layout }
           })
           return widget
@@ -185,6 +209,7 @@ export const useWorkspaces = create<WorkspacesState>()(
             return { widgets, layout: t.autoLayout ? autoLayout(widgets.map((w) => w.id)) : t.layout.filter((l) => l.i !== wid) }
           }),
         setLayout: (tabId, layout) => patchCustom(tabId, () => ({ layout, autoLayout: false })),
+        retile: (tabId) => patchCustom(tabId, (t) => ({ layout: autoLayout(t.widgets.map((w) => w.id)), autoLayout: true })),
         duplicate(tabId) {
           const t = get().tabs.find((x) => x.id === tabId)
           if (!t || t.kind !== 'custom') return
@@ -197,6 +222,14 @@ export const useWorkspaces = create<WorkspacesState>()(
     {
       name: 'impulse.workspaces',
       storage: createJSONStorage(() => localStorage),
+      version: 1,
+      // v0 grids were 12 x 12; scale saved layouts onto the finer 24 x 24 grid.
+      migrate: (state, version) => {
+        const s = state as Pick<WorkspacesState, 'tabs' | 'active'>
+        if (version < 1)
+          s.tabs = s.tabs.map((t) => (t.kind === 'custom' ? { ...t, layout: t.layout.map((l) => ({ i: l.i, x: l.x * 2, y: l.y * 2, w: l.w * 2, h: l.h * 2 })) } : t))
+        return s as WorkspacesState
+      },
       // Widgets that were mid-draw when the page closed are finished on reload.
       onRehydrateStorage: () => (s) => {
         s?.tabs.forEach((t) => t.kind === 'custom' && t.widgets.forEach((w) => (w.status = 'ready')))

@@ -134,8 +134,9 @@ export class AlertEngine {
       }).catch(() => undefined)
   }
 
-  /** macOS banner for when no Impulse tab is open. */
+  /** Desktop banner for when no Impulse tab is open: native via the Electron app, else macOS osascript. */
   desktopNotify(title: string, body: string) {
+    if (process.send) return void process.send({ type: 'notify', title, body })
     if (process.platform !== 'darwin') return
     const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
     execFile('osascript', ['-e', `display notification "${esc(body)}" with title "Impulse" subtitle "${esc(title)}"`], () => undefined)

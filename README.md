@@ -11,6 +11,26 @@ pnpm dev          # web app (Vite) + local bridge
 
 Open the URL Vite prints. `pnpm web` and `pnpm bridge` run the two halves separately.
 
+## Desktop app
+
+Impulse also ships as an Electron app. It bundles the bridge, so there's nothing to run in a terminal.
+
+```sh
+pnpm app:dev      # Vite with hot reload inside the Electron window
+pnpm app          # build, then run the production app locally
+pnpm dist         # package for this OS → release/ (dist:mac, dist:win, dist:linux for a specific one)
+```
+
+- The main process (`electron/main.ts`) starts `bridge/server.ts` with Electron's own Node, so users don't need Node installed. If a bridge is already listening on `7420` (e.g. `pnpm dev`), the app uses that one instead.
+- The UI is served from `impulse://app/`, so local storage (workspaces, layouts, chats) persists across launches.
+- Packaged builds keep bridge state in the OS user-data folder (Help ▸ Open data folder) instead of `.impulse/`; the bridge log is under Help ▸ Bridge log.
+- On macOS the app keeps running with its window closed, so alerts keep firing and arrive as native notifications.
+- Wallets in the app:
+  - **Browser wallet** (Phantom, MetaMask, Rabby, any extension): Electron can't load extensions, so Connect opens a small pairing page (`wallet.html`) in your normal browser. Pick the wallet there and keep the tab open. The bridge relays every wallet request (connect, enabling trading, deposits, withdrawals) to it, and you approve in the extension as usual (`bridge/wallet.ts`, `src/wallet/browserWallet.ts`).
+  - **Coinbase Wallet** opens its own popup window inside the app.
+  - **WalletConnect / mobile wallets** pair by QR code when `VITE_WALLETCONNECT_PROJECT_ID` is set at build time.
+- Builds are unsigned. For signed/notarised macOS builds set the usual electron-builder env vars (`CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, …) before `pnpm dist:mac`.
+
 Optional `.env.local`:
 
 ```sh
@@ -24,13 +44,18 @@ VITE_WALLETCONNECT_PROJECT_ID=…   # enables WalletConnect / mobile wallets (ex
 | UI kit | shadcn/ui (Radix) + Tailwind v4, Inter, lucide icons |
 | Motion | Motion (shared-layout chat morph, springs, blur-ins) |
 | Charts | TradingView lightweight-charts v5; canvas order-book heatmap |
-| Grid | react-grid-layout v2 |
+| Grid | react-grid-layout v2 (custom workspaces), react-resizable-panels (market layout) |
 | Toasts | Sonner |
 | Market data & trading | `@nktkas/hyperliquid` (REST + WebSocket), main dex + `xyz` HIP-3 dex |
 | Wallet | wagmi + RainbowKit on Arbitrum; deposits via the official USDC bridge |
 | Agent tools | Model Context Protocol (`@modelcontextprotocol/sdk`) |
 
 **Trading** is non-custodial. On first order Impulse asks your wallet to approve a locally generated Hyperliquid agent key (the same pattern the official app uses), then signs orders in the browser. The agent can only *propose* orders (`propose_order` shows an editable ticket); nothing executes until you press Place.
+
+## Workspaces
+
+- **Custom workspaces** sit on a 24 × 24 grid that fills the screen. Drag a widget by its header; drop it on another widget to swap the two, or on open space to place it there. Resize from any edge or corner. Widgets that share an edge resize together, like split panes, and stop at each other's minimum size. Save ▸ Tidy layout goes back to even auto-tiling.
+- **Market tabs** (chart · order book · ticket · positions) have draggable splits. The sizes are shared by every market tab.
 
 ## The bridge
 
