@@ -1,6 +1,6 @@
 import { ArrowLeftRight, GripVertical } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { Group, Panel, Separator, useDefaultLayout } from 'react-resizable-panels'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
@@ -105,12 +105,33 @@ function usePaneDrag(root: React.RefObject<HTMLElement | null>) {
 
 /* ------------------------------------------------------------------ layout */
 
+/*
+ * Pane bodies are memoised: TradeLayout re-renders on every pointer move while a pane is dragged, and the
+ * chart, book, ticket and positions shouldn't re-render with it.
+ */
+const ChartPane = memo(ChartPanel)
+const BookPane = memo(Orderbook)
+const PositionsPane = memo(PositionsTabs)
+const TicketPane = memo(function TicketPane({ coin, onCoinChange }: { coin: string; onCoinChange: (c: string) => void }) {
+  return (
+    <>
+      <OrderTicket coin={coin} onCoinChange={onCoinChange} />
+      <AccountSummary />
+    </>
+  )
+})
+
 /** Splits are shared by every market tab, so a layout you like follows you between markets. */
 const useSaved = (id: string) => useDefaultLayout({ id: `impulse.trade.${id}`, onlySaveAfterUserInteractions: true })
 
 /** Standard market workspace: chart · order book · ticket, positions underneath. Every split is draggable, every pane movable. */
 export function TradeLayout({ tab }: { tab: Extract<Tab, { kind: 'market' }> }) {
   const openMarket = useOpenMarket()
+  const openRef = useRef(openMarket)
+  useEffect(() => {
+    openRef.current = openMarket
+  })
+  const onCoinChange = useCallback((c: string) => openRef.current(c), [])
   const slots = useTradeSlots((s) => s.slots)
   const root = useRef<HTMLDivElement>(null)
   const { drag, start } = usePaneDrag(root)
@@ -121,18 +142,13 @@ export function TradeLayout({ tab }: { tab: Extract<Tab, { kind: 'market' }> }) 
   const body = (pane: Pane) => {
     switch (pane) {
       case 'chart':
-        return <ChartPanel coin={tab.coin} />
+        return <ChartPane coin={tab.coin} />
       case 'book':
-        return <Orderbook coin={tab.coin} className="flex-1" />
+        return <BookPane coin={tab.coin} className="flex-1" />
       case 'positions':
-        return <PositionsTabs className="h-full" />
+        return <PositionsPane className="h-full" />
       case 'ticket':
-        return (
-          <>
-            <OrderTicket coin={tab.coin} onCoinChange={(c) => openMarket(c)} />
-            <AccountSummary />
-          </>
-        )
+        return <TicketPane coin={tab.coin} onCoinChange={onCoinChange} />
     }
   }
 

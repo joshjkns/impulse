@@ -146,6 +146,7 @@ async function scenario(browser, name, path, seed) {
   })
   await page.goto(base + path)
   await page.waitForTimeout(5000)
+  if (process.env.DRAG && name.startsWith('custom')) return dragTest(page, name).finally(() => timers.forEach(clearInterval))
   const cdp = await page.context().newCDPSession(page)
   await cdp.send('Performance.enable')
   const before = Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map((m) => [m.name, m.value]))
@@ -224,6 +225,80 @@ const custom = {
   const s = JSON.parse(custom['impulse.workspaces'])
   s.state.tabs[0].layout = s.state.tabs[0].widgets.map((w, i) => ({ i: w.id, x: (i % 3) * 8, y: Math.floor(i / 3) * 12, w: 8, h: 12 }))
   custom['impulse.workspaces'] = JSON.stringify(s)
+}
+
+/**
+ * Drag the first widget by its header onto the last one, then resize one by its east edge, sampling frame
+ * intervals throughout. Long frames during a drag are what reads as "glitchy".
+ */
+async function dragTest(page, name) {
+  const shots = process.env.SHOTS
+  await page.evaluate(() => {
+    window.__frames = []
+    let last = performance.now()
+    const tick = (t) => {
+      window.__frames.push(t - last)
+      last = t
+      requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  })
+  const cdp = await page.context().newCDPSession(page)
+  if (process.env.PROFILE) {
+    await cdp.send('Profiler.enable')
+    await cdp.send('Profiler.setSamplingInterval', { interval: 200 })
+    await cdp.send('Profiler.start')
+  }
+  const box = async (sel) => (await page.locator(sel).first().boundingBox({ timeout: 5000 }))
+  const src = await box('[data-widget-id="w0"] header h3')
+  const dst = await box('[data-widget-id="w5"]')
+  await page.mouse.move(src.x + 20, src.y + 5)
+  await page.mouse.down()
+  const steps = 40
+  for (let i = 1; i <= steps; i++) {
+    await page.mouse.move(src.x + 20 + ((dst.x + dst.width / 2 - src.x - 20) * i) / steps, src.y + 5 + ((dst.y + dst.height / 2 - src.y - 5) * i) / steps)
+    await page.waitForTimeout(16)
+    if (shots && i === steps) await page.screenshot({ path: `${shots}/drag-mid.png` })
+  }
+  await page.mouse.up()
+  const dragFrames = await page.evaluate(() => window.__frames.splice(0).slice(1))
+  await page.waitForTimeout(400)
+  if (shots) await page.screenshot({ path: `${shots}/drag-after.png` })
+  await page.evaluate(() => window.__frames.splice(0))
+  const e = await box('[data-widget-id="w1"] .grid-handle-e')
+  await page.mouse.move(e.x + e.width / 2, e.y + e.height / 2)
+  await page.mouse.down()
+  for (let i = 1; i <= 30; i++) {
+    await page.mouse.move(e.x + e.width / 2 + i * 6, e.y + e.height / 2)
+    await page.waitForTimeout(16)
+  }
+  if (shots) await page.screenshot({ path: `${shots}/resize-mid.png` })
+  await page.mouse.up()
+  const resizeFrames = await page.evaluate(() => window.__frames.splice(0).slice(1))
+  await page.waitForTimeout(400)
+  if (shots) await page.screenshot({ path: `${shots}/resize-after.png` })
+  if (process.env.PROFILE) {
+    const { profile } = await cdp.send('Profiler.stop')
+    for (const n of profile.nodes) if (n.callFrame.url.endsWith('.js')) await loadMap(n.callFrame.url)
+    const self = new Map()
+    const byId = new Map(profile.nodes.map((n) => [n.id, n]))
+    profile.samples.forEach((id, i) => {
+      const f = byId.get(id).callFrame
+      const k = `${f.functionName || '(anon)'} ${resolve(f.url, f.lineNumber, f.columnNumber)}`
+      self.set(k, (self.get(k) ?? 0) + (profile.timeDeltas[i] ?? 0) / 1000)
+    })
+    console.log([...self].sort((a, b) => b[1] - a[1]).slice(0, +process.env.PROFILE).map(([k, v]) => `${v.toFixed(0).padStart(6)} ms  ${k}`).join('\n'))
+  }
+  const stat = (f) => {
+    f.sort((a, b) => a - b)
+    return `${f.length} frames, p50 ${f[f.length >> 1].toFixed(1)} / p95 ${f[Math.floor(f.length * 0.95)].toFixed(1)} / max ${f.at(-1).toFixed(1)} ms, ${f.filter((x) => x > 34).length} dropped`
+  }
+  const scroll = await page.evaluate(() => {
+    const g = document.querySelector('.custom-grid')
+    return { scrollable: g.scrollHeight - g.clientHeight, body: document.scrollingElement.scrollHeight - innerHeight }
+  })
+  console.log(`${name}\n  drag:   ${stat(dragFrames)}\n  resize: ${stat(resizeFrames)}\n  grid overflow ${scroll.scrollable}px, page overflow ${scroll.body}px`)
+  await page.close()
 }
 
 const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {})
