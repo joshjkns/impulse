@@ -224,7 +224,7 @@ export const TOOLS: ToolDef[] = [
     shape: {
       coin,
       side: z.enum(['long', 'short']),
-      usd: z.number().positive().describe('Notional size in USDC'),
+      usd: z.number().positive().describe('Order size as notional in USDC (the ticket "Size" field), not margin. "2,500 USDC at 20x" means usd = 2500.'),
       leverage: z.number().min(1).max(50).default(5),
       type: z.enum(['market', 'limit']).default('market'),
       limitPx: z.number().optional(),
