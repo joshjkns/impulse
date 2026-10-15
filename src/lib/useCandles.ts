@@ -17,7 +17,18 @@ export function loadCandles(coin: string, interval: CandleInterval, lookbackMs: 
   return p
 }
 
-/** Candles with optional live updates over the websocket `candle` channel. */
+/** History plus any live bars that arrived while it loaded; a live bar wins over the snapshot's copy. */
+function mergeLive(history: Candle[], live: Candle[]) {
+  const last = history.length ? history[history.length - 1].t : -Infinity
+  const tail = live.filter((b) => b.t >= last)
+  if (!tail.length) return history
+  return [...history.filter((b) => b.t < tail[0].t), ...tail]
+}
+
+/**
+ * Candles with optional live updates over the websocket `candle` channel. `loading` stays true until the
+ * history snapshot lands (retrying if Hyperliquid rate-limits it), so charts don't fit to a couple of live bars.
+ */
 export function useCandles(coin: string | undefined, interval: CandleInterval, lookbackMs: number, live = false) {
   const [data, setData] = useState<Candle[]>([])
   const [loading, setLoading] = useState(true)
@@ -25,10 +36,23 @@ export function useCandles(coin: string | undefined, interval: CandleInterval, l
     if (!coin) return
     let alive = true
     let unsub: (() => void) | undefined
+    let retry: ReturnType<typeof setTimeout> | undefined
+    // Never let a previous coin/interval's bars mix with this one's.
+    setData([])
     setLoading(true)
-    loadCandles(coin, interval, lookbackMs)
-      .then((d) => alive && (setData(d), setLoading(false)))
-      .catch(() => alive && setLoading(false))
+    const load = (attempt: number) =>
+      loadCandles(coin, interval, lookbackMs)
+        .then((d) => {
+          if (!alive) return
+          setData((prev) => mergeLive(d, prev))
+          setLoading(false)
+        })
+        .catch(() => {
+          if (!alive) return
+          if (attempt < 5) retry = setTimeout(() => load(attempt + 1), 2000 * 2 ** attempt)
+          else setLoading(false)
+        })
+    load(0)
     if (live) {
       subs
         .candle({ coin, interval }, (c) => {
@@ -50,6 +74,7 @@ export function useCandles(coin: string | undefined, interval: CandleInterval, l
     }
     return () => {
       alive = false
+      clearTimeout(retry)
       unsub?.()
     }
   }, [coin, interval, lookbackMs, live])

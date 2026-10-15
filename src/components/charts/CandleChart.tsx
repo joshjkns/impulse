@@ -80,11 +80,12 @@ export function CandleChart({
     if (!c || !v || !data.length) return
     c.setData(data.map((d) => ({ time: ts(d.t), open: d.o, high: d.h, low: d.l, close: d.c })))
     v.setData(data.map((d) => ({ time: ts(d.t), value: d.v * d.c, color: d.c >= d.o ? CHART_COLORS.upVol : CHART_COLORS.downVol })))
-    if (!fitted.current) {
+    // Fit once the history is in; fitting to the first live bar or two leaves the chart zoomed onto them.
+    if (!fitted.current && !loading) {
       chart?.timeScale().fitContent()
       fitted.current = true
     }
-  }, [data, chart])
+  }, [data, loading, chart])
 
   useEffect(() => {
     if (!chart) return
