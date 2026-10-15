@@ -16,7 +16,7 @@ export interface AppNotification {
  *  - modal: large centered window (first open, history browser)
  *  - docked: right-hand panel inside the workspace (after a request starts building widgets)
  */
-export type SettingsPage = 'wallet' | 'accounts' | 'trading' | 'display' | 'notifications' | 'agent' | 'integrations' | 'data'
+export type SettingsPage = 'wallet' | 'accounts' | 'trading' | 'display' | 'notifications' | 'agents' | 'agent' | 'integrations' | 'data'
 
 export type ChatMode = 'closed' | 'modal' | 'docked'
 
@@ -27,6 +27,10 @@ interface UIState {
   settingsOpen: boolean
   settingsPage: SettingsPage
   openSettings: (open?: boolean, page?: SettingsPage) => void
+  /** Agent selected on Settings → Agents. */
+  agentEditing?: string
+  /** Open Settings → Agents with this agent selected. */
+  editAgent: (id: string) => void
   /** A watched address shown instead of the connected wallet (session only; trading disabled). */
   watching?: `0x${string}`
   watch: (address?: `0x${string}`) => void
@@ -45,6 +49,7 @@ export const useUI = create<UIState>((set, get) => ({
   settingsOpen: false,
   settingsPage: 'wallet',
   openSettings: (settingsOpen = true, page) => set(page ? { settingsOpen, settingsPage: page } : { settingsOpen }),
+  editAgent: (agentEditing) => set({ agentEditing, settingsOpen: true, settingsPage: 'agents' }),
   watch: (watching) => set({ watching }),
   notifications: [],
   openCommand: (seed = '') => set({ commandOpen: true, commandSeed: seed }),

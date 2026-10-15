@@ -8,6 +8,8 @@ import { Bubble, TypingBubble } from './Bubble'
 import { fmtClock } from '@/lib/format'
 import { useProviderName } from './ModelPicker'
 import { RichText } from './RichText'
+import { AgentAvatar } from './Agents'
+import { IMPULSE_AGENT_ID, useAgent } from '@/store/agents'
 
 const ALERT_ICON = { bell: Bell, globe: Globe, chart: LineChart, bolt: Zap }
 
@@ -40,19 +42,28 @@ export function MessageList({ thread, compact }: { thread?: Thread; compact?: bo
   )
 }
 
-/** True when reply `i` ran on a different provider/model than the reply before it (or is the first). */
+/** True when reply `i` came from a different agent, provider or model than the reply before it (or is the first). */
 function changedModel(messages: Message[], i: number) {
   for (let k = i - 1; k >= 0; k--) {
     const p = messages[k]
-    if (p.role === 'assistant' && p.harness) return p.harness !== messages[i].harness || p.model !== messages[i].model
+    if (p.role === 'assistant' && p.harness)
+      return p.harness !== messages[i].harness || p.model !== messages[i].model || (p.agentId ?? IMPULSE_AGENT_ID) !== (messages[i].agentId ?? IMPULSE_AGENT_ID)
   }
   return true
 }
 
 function ModelCaption({ m }: { m: Message }) {
   const name = useProviderName()
+  const agent = useAgent(m.agentId)
   return (
     <div className="mr-auto flex items-center gap-1 text-[10.5px] text-fg-3">
+      {agent.id !== IMPULSE_AGENT_ID && (
+        <>
+          <AgentAvatar agent={agent} size={14} />
+          <span className="text-fg-2">{agent.name}</span>
+          <span>·</span>
+        </>
+      )}
       <span>{name(m.harness!)}</span>
       <span>·</span>
       <span>{m.model || 'default model'}</span>

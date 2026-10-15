@@ -1,7 +1,8 @@
-import { Bell, Bot, Database, Monitor, Plug, SlidersHorizontal, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { Bell, Bot, Database, Monitor, Plug, SlidersHorizontal, Sparkles, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { AccountsPage, WalletPage } from '@/components/settings/AccountPages'
 import { AgentPage, IntegrationsPage } from '@/components/settings/AgentPages'
+import { AgentsPage } from '@/components/settings/AgentsPage'
 import { DataPage, DisplayPage, NotificationsPage, TradingPage } from '@/components/settings/PreferencePages'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
@@ -26,7 +27,8 @@ const GROUPS: { title: string; items: { id: SettingsPage; label: string; icon: L
   {
     title: 'AI',
     items: [
-      { id: 'agent', label: 'AI agent', icon: Bot, page: AgentPage },
+      { id: 'agents', label: 'Agents', icon: Sparkles, page: AgentsPage },
+      { id: 'agent', label: 'Providers & models', icon: Bot, page: AgentPage },
       { id: 'integrations', label: 'Integrations', icon: Plug, page: IntegrationsPage },
     ],
   },
@@ -49,7 +51,7 @@ export function SettingsDialog() {
     <Dialog open={open} onOpenChange={(o) => openSettings(o)}>
       <DialogContent className="flex h-[min(640px,88vh)] gap-0 overflow-hidden border-0 bg-[#18181c] p-0 ring-1 ring-white/[0.07] sm:max-w-[820px]">
         <DialogTitle className="sr-only">Settings</DialogTitle>
-        <DialogDescription className="sr-only">Wallet, accounts, trading, display, notifications and AI settings.</DialogDescription>
+        <DialogDescription className="sr-only">Wallet, accounts, trading, display, notifications, agents and AI settings.</DialogDescription>
 
         <nav className="flex w-[200px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-white/[0.05] bg-black/15 p-3 max-sm:w-[64px]">
           <div className="px-2 pt-1 text-[14px] font-medium text-fg max-sm:hidden">Settings</div>
