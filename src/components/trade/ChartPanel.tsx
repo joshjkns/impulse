@@ -1,4 +1,4 @@
-import { ArrowLeftRight, ChevronDown, GripVertical, Heart, Trash2 } from 'lucide-react'
+import { ArrowLeftRight, ChevronDown, Heart, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { CandleChart } from '@/components/charts/CandleChart'
 import { CoinIcon, LivePrice } from '@/components/common'
@@ -8,6 +8,8 @@ import type { CandleInterval } from '@/lib/hl'
 import { cn } from '@/lib/utils'
 import { useMarket } from '@/store/markets'
 import { usePrefs } from '@/store/prefs'
+import { CoinSwitcher } from './CoinSwitcher'
+import { PaneGrip } from './PaneGrip'
 
 const INTERVALS: CandleInterval[] = ['1m', '5m', '15m', '1h', '4h', '1d']
 const RANGES: { k: string; interval: CandleInterval; bars: number }[] = [
@@ -46,14 +48,15 @@ export function ChartPanel({ coin }: { coin: string }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-[52px] shrink-0 items-center gap-5 px-2 text-[11px]">
-        <span className="flex items-center gap-2">
-          <GripVertical className="size-3.5 text-fg-3" />
-          <CoinIcon coin={coin} className="size-[22px] rounded-full" />
-          <span className="text-[14px] text-fg">{m?.symbol ?? coin}</span>
-          <span className="flex items-center gap-0.5 rounded-[5px] bg-brand-soft px-1.5 py-[1px] text-[11.5px] text-brand">
-            {m?.maxLeverage ?? '—'}x
-          </span>
-          <ChevronDown className="size-3 text-fg-3" />
+        <span className="flex items-center gap-1">
+          <PaneGrip />
+          <CoinSwitcher coin={coin} className="h-8 gap-2 bg-transparent pr-2 pl-1 hover:bg-hover data-[state=open]:bg-hover">
+            <CoinIcon coin={coin} className="size-[22px] rounded-full" />
+            <span className="text-[14px] text-fg">{m?.symbol ?? coin}</span>
+            <span className="flex items-center gap-0.5 rounded-[5px] bg-brand-soft px-1.5 py-[1px] text-[11.5px] text-brand">
+              {m?.maxLeverage ?? '—'}x
+            </span>
+          </CoinSwitcher>
         </span>
         <Stat k="Mark" v={<LivePrice value={m?.markPx ?? 0} />} />
         <Stat k="Oracle" v={fmtPx(m?.oraclePx)} />

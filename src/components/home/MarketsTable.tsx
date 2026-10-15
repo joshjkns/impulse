@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronsUpDown, ChevronUp, Heart, ListFilter, PanelRight, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { CoinIcon, LivePrice } from '@/components/common'
 import { MarketSummary } from '@/components/home/MarketSummary'
 import { useOpenMarket } from '@/components/shell/PortfolioPanel'
@@ -17,7 +17,7 @@ import { ASSET_CLASSES, INDUSTRIES, type AssetClass } from '@/lib/catalog'
 import { fmtCompact, fmtPct, tone } from '@/lib/format'
 import { applyScan, sortMarkets } from '@/lib/scan'
 import { cn } from '@/lib/utils'
-import { useMarkets } from '@/store/markets'
+import { useMarkets, type Market } from '@/store/markets'
 import { FEATURED_SCANS, usePrefs, type Scan, type SortKey } from '@/store/prefs'
 
 const COLS: { key: SortKey; label: string; w: string }[] = [
@@ -136,37 +136,17 @@ export function MarketsTable({ selected, onSelect }: { selected: string; onSelec
               ))}
             </div>
             <motion.div key={activeScan} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }}>
-              {rows.map((m) => {
-                const fav = favorites.includes(m.coin)
-                return (
-                  <div
-                    key={m.coin}
-                    onClick={() => onSelect(m.coin)}
-                    onDoubleClick={() => openMarket(m.coin)}
-                    className={cn(
-                      'group flex h-[37.5px] cursor-pointer items-center border-t border-white/[0.035] pr-4 pl-4 text-[12.5px] transition-colors duration-100',
-                      selected === m.coin && showSummary ? 'bg-hover/70' : 'hover:bg-hover/40',
-                    )}
-                  >
-                    <button
-                      onClick={(e) => (e.stopPropagation(), toggleFavorite(m.coin))}
-                      className="w-8 text-fg-3 transition-transform active:scale-75"
-                      aria-label="Favorite"
-                    >
-                      <Heart className={cn('size-3.5 transition-colors', fav ? 'fill-heart text-heart' : 'fill-[#5a5a62] text-[#5a5a62]')} />
-                    </button>
-                    <span className="flex min-w-0 flex-1 items-center gap-2.5">
-                      <CoinIcon coin={m.coin} className="size-[19px]" />
-                      <span className="truncate text-fg">{m.name}</span>
-                    </span>
-                    <LivePrice value={m.markPx} className="w-[92px] text-right text-fg" />
-                    <span className={cn('num w-[88px] text-right', tone(m.changePct))}>{fmtPct(m.changePct)}</span>
-                    <span className="num w-[88px] text-right text-fg">{fmtCompact(m.dayNtlVlm)}</span>
-                    <span className="num w-[104px] text-right text-fg">{fmtCompact(m.openInterest)}</span>
-                    <span className={cn('num w-[84px] text-right', tone(m.funding))}>{fmtPct(m.funding * 100, 4)}</span>
-                  </div>
-                )
-              })}
+              {rows.map((m) => (
+                <MarketRow
+                  key={m.coin}
+                  m={m}
+                  fav={favorites.includes(m.coin)}
+                  selected={selected === m.coin && showSummary}
+                  onSelect={onSelect}
+                  onOpen={openMarket}
+                  onFavorite={toggleFavorite}
+                />
+              ))}
             </motion.div>
           </div>
         </div>
@@ -187,6 +167,46 @@ export function MarketsTable({ selected, onSelect }: { selected: string; onSelec
     </div>
   )
 }
+
+interface RowProps {
+  m: Market
+  fav: boolean
+  selected: boolean
+  onSelect: (coin: string) => void
+  onOpen: (coin: string) => void
+  onFavorite: (coin: string) => void
+}
+
+/** Rows only re-render when their own market ticks (unchanged markets keep their object identity). */
+const MarketRow = memo(
+  function MarketRow({ m, fav, selected, onSelect, onOpen, onFavorite }: RowProps) {
+    return (
+      <div
+        onClick={() => onSelect(m.coin)}
+        onDoubleClick={() => onOpen(m.coin)}
+        className={cn(
+          'group flex h-[37.5px] cursor-pointer items-center border-t border-white/[0.035] pr-4 pl-4 text-[12.5px] transition-colors duration-100 [contain-intrinsic-size:auto_37.5px] [content-visibility:auto]',
+          selected ? 'bg-hover/70' : 'hover:bg-hover/40',
+        )}
+      >
+        <button onClick={(e) => (e.stopPropagation(), onFavorite(m.coin))} className="w-8 text-fg-3 transition-transform active:scale-75" aria-label="Favorite">
+          <Heart className={cn('size-3.5 transition-colors', fav ? 'fill-heart text-heart' : 'fill-[#5a5a62] text-[#5a5a62]')} />
+        </button>
+        <span className="flex min-w-0 flex-1 items-center gap-2.5">
+          <CoinIcon coin={m.coin} className="size-[19px]" />
+          <span className="truncate text-fg">{m.name}</span>
+        </span>
+        <LivePrice value={m.markPx} className="w-[92px] text-right text-fg" />
+        <span className={cn('num w-[88px] text-right', tone(m.changePct))}>{fmtPct(m.changePct)}</span>
+        <span className="num w-[88px] text-right text-fg">{fmtCompact(m.dayNtlVlm)}</span>
+        <span className="num w-[104px] text-right text-fg">{fmtCompact(m.openInterest)}</span>
+        <span className={cn('num w-[84px] text-right', tone(m.funding))}>{fmtPct(m.funding * 100, 4)}</span>
+      </div>
+    )
+  },
+  // Handlers are recreated by the parent each render but always do the same thing.
+  (a, b) => a.m === b.m && a.fav === b.fav && a.selected === b.selected,
+)
 
 const ToolbarButton = ({ children, className, ...p }: React.ComponentProps<'button'>) => (
   <button

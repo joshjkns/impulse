@@ -1,4 +1,4 @@
-import { ChevronDown, LayoutGrid, PanelLeft, Plus, Save, Settings, X } from 'lucide-react'
+import { ChevronDown, LayoutGrid, PanelRight, Plus, Save, Settings, X } from 'lucide-react'
 import { Reorder, motion } from 'motion/react'
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useTradeSlots } from '@/components/workspace/TradeLayout'
 import { cn } from '@/lib/utils'
 import { useMarket } from '@/store/markets'
 import { useUI } from '@/store/ui'
@@ -54,13 +55,6 @@ export function TabBar() {
 
   return (
     <div className="flex h-[38px] shrink-0 items-center gap-1 pb-1.5">
-      <button
-        onClick={() => setChatMode(chatMode === 'docked' ? 'closed' : 'docked')}
-        className={cn('grid size-7 shrink-0 place-items-center rounded-lg transition-colors hover:bg-hover hover:text-fg', chatMode === 'docked' ? 'text-fg' : 'text-fg-2')}
-        aria-label="Toggle Impulse panel"
-      >
-        <PanelLeft className="size-4" />
-      </button>
       <Reorder.Group axis="x" values={tabs.map((t) => t.id)} onReorder={reorder} className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto no-scrollbar">
         {tabs.map((t) => (
           <Reorder.Item
@@ -105,6 +99,7 @@ export function TabBar() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuItem onSelect={() => toast.success('Workspace saved', { description: 'Layouts are saved automatically on this device.' })}>Save layout</DropdownMenuItem>
+            {current?.kind === 'market' && <DropdownMenuItem onSelect={() => useTradeSlots.getState().reset()}>Reset panel positions</DropdownMenuItem>}
             {current?.kind === 'custom' && (
               <>
                 <DropdownMenuItem onSelect={() => { const id = duplicate(current.id); if (id) go(id) }}>Duplicate workspace</DropdownMenuItem>
@@ -128,6 +123,17 @@ export function TabBar() {
         </DropdownMenu>
         <button onClick={() => openSettings()} className="grid size-7 place-items-center rounded-lg text-fg-2 transition-colors hover:bg-hover hover:text-fg" aria-label="Settings">
           <Settings className="size-3.5" />
+        </button>
+        <button
+          onClick={() => setChatMode(chatMode === 'docked' ? 'closed' : 'docked')}
+          className={cn(
+            'grid size-7 place-items-center rounded-lg transition-colors hover:bg-hover hover:text-fg',
+            chatMode === 'docked' ? 'bg-raised text-fg' : 'text-fg-2',
+          )}
+          aria-label="Toggle Impulse panel"
+          title={chatMode === 'docked' ? 'Hide Impulse panel' : 'Show Impulse panel'}
+        >
+          <PanelRight className="size-4" />
         </button>
       </div>
     </div>

@@ -1,6 +1,7 @@
-import { ChevronLeft, GripVertical, Plus, Search, SquarePen, Trash2 } from 'lucide-react'
+import { ChevronLeft, Plus, Search, SquarePen, Trash2, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router'
 import { LogoMark } from '@/components/brand/Logo'
 import { useBridgeStore } from '@/lib/bridge'
 import { cn } from '@/lib/utils'
@@ -10,7 +11,9 @@ import { useUI } from '@/store/ui'
 import { Composer } from './Composer'
 import { MessageList } from './MessageList'
 
-const SURFACE = { type: 'spring', stiffness: 420, damping: 40, mass: 0.9 } as const
+const SURFACE = { type: 'spring', stiffness: 520, damping: 42, mass: 0.8 } as const
+const EASE = [0.2, 0.9, 0.1, 1] as const
+const DOCK_W = 300
 
 export function AgentAvatar({ size = 22 }: { size?: number }) {
   return (
@@ -71,20 +74,18 @@ export function ChatHost() {
       {mode === 'modal' && (
         <motion.div key="chat-modal" className="fixed inset-0 z-40 grid place-items-center p-6">
           <motion.div
-            className="absolute inset-0 bg-black/30"
+            className="absolute inset-0 bg-black/40"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.16 }}
+            transition={{ duration: 0.18, ease: EASE }}
             onClick={() => setMode('closed')}
           />
           <motion.div
-            layoutId="chat-surface"
-            initial={{ opacity: 0, scale: 0.96, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97 }}
-            transition={SURFACE}
-            className="relative flex h-[min(680px,86vh)] w-[min(1020px,92vw)] overflow-hidden rounded-[18px] bg-[#1b1b20] shadow-[0_40px_120px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.06]"
+            initial={{ opacity: 0, scale: 0.965, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0, transition: SURFACE }}
+            exit={{ opacity: 0, scale: 0.98, y: 6, transition: { duration: 0.14, ease: EASE } }}
+            className="relative will-change-transform flex h-[min(680px,86vh)] w-[min(1020px,92vw)] overflow-hidden rounded-[18px] bg-[#1b1b20] shadow-[0_40px_120px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.06]"
           >
             <aside className="flex w-[226px] shrink-0 flex-col bg-[#202127] ring-1 ring-white/[0.04]">
               <div className="flex items-center gap-1 p-2.5">
@@ -162,33 +163,59 @@ export function ChatHost() {
   )
 }
 
-/** Docked surface: lives in the workspace grid's right column. */
+/** Docked surface: lives in the workspace's right column and slides in from the edge. */
 export function DockedChat() {
   const setMode = useUI((s) => s.setChatMode)
   const { thread, busy } = useActiveThread()
   const newThread = useChat((s) => s.newThread)
   return (
     <motion.div
-      layoutId="chat-surface"
-      transition={SURFACE}
-      className="flex h-full w-[300px] shrink-0 flex-col overflow-hidden rounded-[12px] bg-panel"
+      initial={{ width: 0, opacity: 0 }}
+      animate={{ width: DOCK_W + 8, opacity: 1 }}
+      exit={{ width: 0, opacity: 0 }}
+      transition={{ duration: 0.24, ease: EASE }}
+      className="h-full shrink-0 overflow-hidden"
     >
-      <header className="flex h-12 shrink-0 items-center gap-1 px-2">
-        <GripVertical className="size-3.5 text-fg-3" />
-        <RoundButton onClick={() => setMode('modal')} aria-label="All chats">
-          <ChevronLeft className="size-4" />
-        </RoundButton>
-        <RoundButton onClick={() => newThread()} aria-label="New chat">
-          <SquarePen className="size-3.5" />
-        </RoundButton>
-        <div className="flex flex-1 justify-center pr-14">
-          <AgentPill />
-        </div>
-      </header>
-      <MessageList thread={thread} compact />
-      <Composer busy={busy} compact />
+      <motion.div
+        initial={{ x: 24 }}
+        animate={{ x: 0 }}
+        exit={{ x: 24 }}
+        transition={{ duration: 0.24, ease: EASE }}
+        className="ml-2 flex h-full flex-col overflow-hidden rounded-[12px] bg-panel"
+        style={{ width: DOCK_W }}
+      >
+        <header className="flex h-12 shrink-0 items-center gap-1 px-2">
+          <RoundButton onClick={() => setMode('modal')} aria-label="All chats" title="All chats">
+            <ChevronLeft className="size-4" />
+          </RoundButton>
+          <RoundButton onClick={() => newThread()} aria-label="New chat" title="New chat">
+            <SquarePen className="size-3.5" />
+          </RoundButton>
+          <div className="flex flex-1 justify-center">
+            <AgentPill />
+          </div>
+          <RoundButton onClick={() => setMode('closed')} aria-label="Close panel" title="Close">
+            <X className="size-3.5" />
+          </RoundButton>
+        </header>
+        <MessageList thread={thread} compact />
+        <Composer busy={busy} compact />
+      </motion.div>
     </motion.div>
   )
+}
+
+/**
+ * Opens Impulse from anywhere: docks it beside the grid on workspaces, otherwise opens the big window.
+ * Pressing it again closes whichever surface is showing.
+ */
+export function useToggleChat() {
+  const onWorkspaces = useLocation().pathname.startsWith('/workspaces')
+  return () => {
+    const { chatMode, setChatMode } = useUI.getState()
+    const visible = chatMode === 'modal' || (chatMode === 'docked' && onWorkspaces)
+    setChatMode(visible ? 'closed' : onWorkspaces ? 'docked' : 'modal')
+  }
 }
 
 function RoundButton({ className, ...p }: React.ComponentProps<'button'>) {

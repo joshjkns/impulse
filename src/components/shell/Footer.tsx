@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { fmtPct, fmtPx, fmtSigned, sigDecimals, tone } from '@/lib/format'
+import { useShallow } from 'zustand/react/shallow'
 import { useMarkets } from '@/store/markets'
 import { usePrefs } from '@/store/prefs'
 
@@ -12,8 +13,7 @@ const PER_PAGE = 2
 export function Footer() {
   const favorites = usePrefs((s) => s.favorites)
   const showTicker = usePrefs((s) => s.footerTicker)
-  const markets = useMarkets((s) => s.markets)
-  const items = favorites.map((c) => markets[c]).filter(Boolean)
+  const items = useMarkets(useShallow((s) => favorites.map((c) => s.markets[c]).filter(Boolean)))
   const pages = Math.max(1, Math.ceil(items.length / PER_PAGE))
   const [[page, dir], setPage] = useState<[number, number]>([0, 1])
   const [disclaimer, setDisclaimer] = useState(false)

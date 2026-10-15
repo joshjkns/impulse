@@ -41,7 +41,9 @@ export function WidgetFrame({ tabId, widget }: { tabId: string; widget: Widget }
       className="group flex h-full flex-col overflow-hidden rounded-[12px] bg-panel"
     >
       <header className="drag-handle flex shrink-0 cursor-grab items-start gap-1.5 px-2 pt-2.5 pb-1 active:cursor-grabbing">
-        <GripVertical className="mt-[3px] size-3.5 shrink-0 text-fg-3 transition-colors group-hover:text-fg-2" />
+        <span title="Drag to move" className="-mt-0.5 grid h-6 w-4 shrink-0 place-items-center rounded-[6px] text-fg-3 transition-colors group-hover:text-fg-2 hover:bg-hover hover:text-fg">
+          <GripVertical className="size-3.5" />
+        </span>
         <div className="min-w-0 flex-1">
           {editing ? (
             <input

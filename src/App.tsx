@@ -2,7 +2,7 @@ import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { useEffect } from 'react'
 import { Route, Routes, useLocation, useNavigate } from 'react-router'
 import { useAccount as useWagmiAccount } from 'wagmi'
-import { ChatHost } from '@/components/chat/ChatHost'
+import { ChatHost, useToggleChat } from '@/components/chat/ChatHost'
 import { CommandMenu } from '@/components/shell/CommandMenu'
 import { Footer } from '@/components/shell/Footer'
 import { Notifications } from '@/components/shell/Notifications'
@@ -39,8 +39,13 @@ export default function App() {
     nav.go = (p) => navigate(p)
   }, [navigate])
 
+  const toggleChat = useToggleChat()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'j' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        return toggleChat()
+      }
       const t = e.target as HTMLElement
       if (t.closest('input,textarea,[contenteditable]')) return
       if (e.key === '/' || (e.key === 'k' && (e.metaKey || e.ctrlKey))) {
@@ -50,7 +55,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [openCommand])
+  }, [openCommand, toggleChat])
 
   const section = pathname.split('/')[1] || 'home'
 

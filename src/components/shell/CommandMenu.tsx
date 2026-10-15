@@ -2,19 +2,25 @@ import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { Bell, Home, LayoutGrid, MessageSquarePlus, Rss, Settings, Sparkles, Wallet } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
+import { useShallow } from 'zustand/react/shallow'
 import { CoinIcon } from '@/components/common'
 import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command'
 import { fmtPct, fmtPx, tone } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useChat } from '@/store/chat'
-import { useMarkets } from '@/store/markets'
+import { useMarkets, type Market } from '@/store/markets'
 import { useUI } from '@/store/ui'
 import { useOpenMarket } from './PortfolioPanel'
 
+const NONE: Record<string, Market> = {}
+
 /** "Search or do anything": jump to markets and pages, or hand the query to Impulse. */
 export function CommandMenu() {
-  const { commandOpen, commandSeed, closeCommand, setChatMode, openSettings } = useUI()
-  const markets = useMarkets((s) => s.markets)
+  const { commandOpen, commandSeed, closeCommand, setChatMode, openSettings } = useUI(
+    useShallow((s) => ({ commandOpen: s.commandOpen, commandSeed: s.commandSeed, closeCommand: s.closeCommand, setChatMode: s.setChatMode, openSettings: s.openSettings })),
+  )
+  // Live prices only matter while the menu is open; closed, it ignores the feed entirely.
+  const markets = useMarkets((s) => (commandOpen ? s.markets : NONE))
   const order = useMarkets((s) => s.order)
   const send = useChat((s) => s.send)
   const newThread = useChat((s) => s.newThread)

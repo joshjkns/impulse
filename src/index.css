@@ -220,17 +220,19 @@
   z-index: 3;
 }
 .react-grid-item.react-draggable-dragging > :first-child {
-  box-shadow: 0 18px 48px -12px rgb(0 0 0 / 0.65), 0 0 0 1px rgb(255 255 255 / 0.08);
-  opacity: 0.94;
+  box-shadow: 0 24px 60px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.1);
+  opacity: 0.92;
+  scale: 1.015;
+  transition: scale 160ms var(--ease-snap);
 }
 .react-grid-item.resizing > :first-child {
   box-shadow: 0 0 0 1px rgb(255 255 255 / 0.12);
 }
 .react-grid-item.react-grid-placeholder {
-  background: color-mix(in oklab, var(--raised) 70%, transparent);
+  background: color-mix(in oklab, var(--brand) 6%, transparent);
   opacity: 1;
   border-radius: 12px;
-  border: 1px dashed #3a3a42;
+  border: 1.5px dashed color-mix(in oklab, var(--brand) 60%, transparent);
   transition-duration: 120ms;
   z-index: 2;
 }
@@ -363,7 +365,17 @@ html[data-desktop]:not([data-desktop='darwin']) .app-sidepanel {
   opacity: 0;
 }
 .react-grid-item.swap-target > :first-child {
-  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--brand) 70%, transparent);
-  background: color-mix(in oklab, var(--brand) 6%, var(--panel));
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--brand) 75%, transparent);
+  background: color-mix(in oklab, var(--brand) 8%, var(--panel));
   transition: box-shadow 120ms, background 120ms;
+}
+
+/* Market tab: moving a pane by its grip. Lock the cursor and keep charts from swallowing the pointer. */
+.pane-dragging,
+.pane-dragging * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+.pane-dragging [data-slot] > :first-child {
+  pointer-events: none;
 }

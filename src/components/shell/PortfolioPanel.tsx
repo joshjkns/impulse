@@ -3,6 +3,7 @@ import { ChevronsLeft, ChevronsRight, Heart, Settings, StickyNote, Wallet } from
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
+import { useShallow } from 'zustand/react/shallow'
 import { CoinIcon, IconButton, LivePrice } from '@/components/common'
 import { fmtPct, fmtUsd, tone } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -146,7 +147,7 @@ function Portfolio() {
 
 function Watchlist() {
   const favorites = usePrefs((s) => s.favorites)
-  const markets = useMarkets((s) => s.markets)
+  const markets = useMarkets(useShallow((s) => Object.fromEntries(favorites.map((c) => [c, s.markets[c]]))))
   const openMarket = useOpenMarket()
   return (
     <div>
