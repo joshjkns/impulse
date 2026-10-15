@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 import { useOpenMarket } from '@/components/shell/PortfolioPanel'
 import { LivePrice, Sparkline } from '@/components/common'
-import { fmtPct, fmtSigned, tone } from '@/lib/format'
+import { fmtPct, fmtSigned, sigDecimals, tone } from '@/lib/format'
 import { useCandles } from '@/lib/useCandles'
 import { cn } from '@/lib/utils'
 import { useMarket } from '@/store/markets'
@@ -66,10 +66,10 @@ function Featured({ coin }: { coin: string }) {
       <span className="mt-0.5 flex items-baseline gap-1.5 text-[12px]">
         <LivePrice value={m?.markPx ?? 0} className="text-fg" />
         <span className={cn('num text-[11px]', tone(m?.change))}>
-          {fmtSigned(m?.change)} ({fmtPct(m?.changePct, 2, false)})
+          {fmtSigned(m?.change, sigDecimals(m?.markPx ?? 0))} ({fmtPct(m?.changePct, 2, false)})
         </span>
       </span>
-      <Sparkline values={data.map((d) => d.c)} baseline={m?.prevDayPx} up={(m?.change ?? 0) >= 0} className="mt-2 mb-3 h-full w-full" />
+      <Sparkline values={data.map((d) => d.c)} baseline={m?.prevDayPx} up={(m?.change ?? 0) >= 0} className="mt-2 mb-3 min-h-0 w-full flex-1" />
     </button>
   )
 }
@@ -86,7 +86,7 @@ function MiniTicker({ coin }: { coin: string }) {
         <span className="flex items-baseline gap-1 truncate text-[12px]">
           <LivePrice value={m?.markPx ?? 0} className="text-fg" />
           <span className={cn('num truncate text-[11px]', tone(m?.change))}>
-            {fmtSigned(m?.change)} ({fmtPct(m?.changePct, 2, false)})
+            {fmtSigned(m?.change, sigDecimals(m?.markPx ?? 0))} ({fmtPct(m?.changePct, 2, false)})
           </span>
         </span>
       </span>

@@ -264,19 +264,23 @@ export async function placeOrder(o: OrderIntent) {
   const px = o.type === 'market' ? ref * (o.isBuy ? 1 + slip : 1 - slip) : ref
   const sz = roundSz(o.usd / ref, m)
   if (+sz <= 0) throw new Error('Size too small')
-  const main = {
-    a: m.assetId,
-    b: o.isBuy,
-    p: roundPx(px, m),
-    s: sz,
-    r: !!o.reduceOnly,
-    t: { limit: { tif: o.type === 'market' ? ('FrontendMarket' as const) : ('Gtc' as const) } },
+  type Orders = Parameters<ExchangeClient['order']>[0]['orders']
+  const orders: Orders = [
+    {
+      a: m.assetId,
+      b: o.isBuy,
+      p: roundPx(px, m),
+      s: sz,
+      r: !!o.reduceOnly,
+      t: { limit: { tif: o.type === 'market' ? 'FrontendMarket' : 'Gtc' } },
+    },
+  ]
+  for (const [tpsl, trigger] of [['tp', o.tp], ['sl', o.sl]] as const) {
+    if (!trigger) continue
+    const p = roundPx(trigger, m)
+    orders.push({ a: m.assetId, b: !o.isBuy, p, s: sz, r: true, t: { trigger: { isMarket: true, triggerPx: p, tpsl } } })
   }
-  const triggers = [
-    o.tp && { a: m.assetId, b: !o.isBuy, p: roundPx(o.tp, m), s: sz, r: true, t: { trigger: { isMarket: true, triggerPx: roundPx(o.tp, m), tpsl: 'tp' as const } } },
-    o.sl && { a: m.assetId, b: !o.isBuy, p: roundPx(o.sl, m), s: sz, r: true, t: { trigger: { isMarket: true, triggerPx: roundPx(o.sl, m), tpsl: 'sl' as const } } },
-  ].filter(Boolean) as (typeof main)[]
-  const res = await ex.order({ orders: [main, ...triggers], grouping: triggers.length ? 'normalTpsl' : 'na' })
+  const res = await ex.order({ orders, grouping: orders.length > 1 ? 'normalTpsl' : 'na' })
   void useAccount.getState().refresh()
   const st = res.response.data.statuses[0]
   if (st && typeof st === 'object' && 'filled' in st) return { filled: true, avgPx: +st.filled.avgPx, sz: +st.filled.totalSz }

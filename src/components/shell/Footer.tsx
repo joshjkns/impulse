@@ -2,7 +2,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { fmtPct, fmtPx, fmtSigned, tone } from '@/lib/format'
+import { fmtPct, fmtPx, fmtSigned, sigDecimals, tone } from '@/lib/format'
 import { useMarkets } from '@/store/markets'
 import { usePrefs } from '@/store/prefs'
 
@@ -51,7 +51,7 @@ export function Footer() {
                 <span className="text-fg">{m.name}</span>
                 <span className="num text-fg">{fmtPx(m.markPx)}</span>
                 <span className={`num ${tone(m.change)}`}>
-                  {fmtSigned(m.change)} ({fmtPct(m.changePct, 2, false)})
+                  {fmtSigned(m.change, sigDecimals(m.markPx))} ({fmtPct(m.changePct, 2, false)})
                 </span>
               </span>
             ))}

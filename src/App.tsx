@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect } from 'react'
-import { Route, Routes, useLocation } from 'react-router'
+import { Route, Routes, useLocation, useNavigate } from 'react-router'
 import { useAccount as useWagmiAccount } from 'wagmi'
 import { ChatHost } from '@/components/chat/ChatHost'
 import { CommandMenu } from '@/components/shell/CommandMenu'
@@ -12,11 +12,11 @@ import { Splash } from '@/components/shell/Splash'
 import { TopBar } from '@/components/shell/TopBar'
 import { Toaster } from '@/components/ui/sonner'
 import { useBridge } from '@/lib/bridge'
+import { nav } from '@/lib/uiTools'
 import Feed from '@/pages/Feed'
 import Home from '@/pages/Home'
 import Workspaces from '@/pages/Workspaces'
 import { useAccount } from '@/store/account'
-import { useAlerts } from '@/store/alerts'
 import { useMarkets } from '@/store/markets'
 import { useUI } from '@/store/ui'
 
@@ -31,7 +31,10 @@ export default function App() {
   useEffect(() => void start(), [start])
   useEffect(() => setAddress(address), [address, setAddress])
   useBridge()
-  useEffect(() => useAlerts.getState().start(), [])
+  const navigate = useNavigate()
+  useEffect(() => {
+    nav.go = (p) => navigate(p)
+  }, [navigate])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

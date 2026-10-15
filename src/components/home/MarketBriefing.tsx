@@ -17,7 +17,7 @@ export function MarketBriefing() {
   const send = useChat((s) => s.send)
 
   const computed = useMemo(() => {
-    const list = Object.values(markets).filter((m) => m.dayNtlVlm > 2e6)
+    const list = Object.values(markets).filter((m) => m.dayNtlVlm > 2.5e7)
     if (!list.length) return undefined
     const by = (cls: Market['assetClass']) => list.filter((m) => m.assetClass === cls)
     const avg = (xs: Market[]) => xs.reduce((a, m) => a + m.changePct, 0) / Math.max(1, xs.length)

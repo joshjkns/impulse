@@ -20,6 +20,7 @@ import { WebSocketServer, type WebSocket } from 'ws'
 import { AlertEngine } from './alerts.ts'
 import { candles, funding, markets, news, orderbook, resolve, trades } from './data.ts'
 import { HARNESSES, detectHarnesses, searchPath, which, type HarnessStatus, type RunContext } from './harnesses.ts'
+import { oiSeries, startOiRecorder } from './oi.ts'
 import { createParser } from './parse.ts'
 import { smartMoney, onSmartMoney, startSmartMoney } from './smartmoney.ts'
 import { SYSTEM_PROMPT, TOOLS, toolByName } from './tools.ts'
@@ -156,7 +157,9 @@ async function handleCall(runId: string, name: string, args: Record<string, unkn
   const def = toolByName(name)
   if (!def) throw new Error(`Unknown tool ${name}`)
   const run = runs.get(runId)
-  if (!run) throw new Error('No active Impulse run. Tools can only be used while Impulse is waiting on a reply.')
+  // Called from a harness the user wired up directly (e.g. `claude mcp add impulse …`): no chat to report to.
+  if (!runId) return def.target === 'ui' ? runUiTool(undefined, def.name, args) : runBridgeTool(def.name, args)
+  if (!run) throw new Error('This Impulse run has finished. Ask again from the Impulse chat.')
   const stepId = `${runId}.${++run.steps}`
   const base = { id: stepId, name: def.name, label: def.label(args), args }
   broadcast({ type: 'step', runId, threadId: run.threadId, step: { ...base, status: 'running' } })
@@ -315,6 +318,11 @@ const server = createServer(async (req, res) => {
     res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ ok: true, name: 'impulse-bridge', tools: TOOLS.length }))
     return
   }
+  if (req.url?.startsWith('/oi?')) {
+    const coin = new URL(req.url, URL_BASE).searchParams.get('coin') ?? ''
+    res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(oiSeries(coin)))
+    return
+  }
   if (req.url === '/call' && req.method === 'POST') {
     if (!String(req.headers['content-type']).includes('application/json')) return void res.writeHead(415).end()
     try {
@@ -385,4 +393,5 @@ server.listen(PORT, HOST, () => {
   console.log(`     harnesses: ${found.length ? found.join(', ') : 'none found — install Claude Code, Codex, Grok, Gemini, pi, …'}\n`)
 })
 alerts.start()
+startOiRecorder(DATA_DIR)
 if (process.env.IMPULSE_SMART_MONEY !== '0') startSmartMoney()

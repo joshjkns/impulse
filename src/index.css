@@ -154,7 +154,8 @@
   }
   html,
   body,
-  #root {
+  #root,
+  #root > [data-rk] {
     @apply h-full;
   }
   html {

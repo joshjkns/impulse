@@ -1,0 +1,78 @@
+import { AreaSeries, LineSeries } from 'lightweight-charts'
+import { useEffect, useState } from 'react'
+import { CHART_COLORS, ts, useChart } from '@/components/charts/useChart'
+import { fmtCompact } from '@/lib/format'
+import { useCandles } from '@/lib/useCandles'
+import { useMarket } from '@/store/markets'
+import type { WidgetProps } from './registry'
+import { LegendChip } from './WidgetFrame'
+
+const MONTH = 30 * 86_400_000
+const BRIDGE_HTTP = 'http://127.0.0.1:7420'
+
+/** Hourly open-interest history recorded by the bridge (Hyperliquid has no OI history endpoint). */
+function useOiHistory(coin: string) {
+  const [rows, setRows] = useState<[number, number][]>([])
+  useEffect(() => {
+    let alive = true
+    const load = () =>
+      fetch(`${BRIDGE_HTTP}/oi?coin=${encodeURIComponent(coin)}`)
+        .then((r) => r.json() as Promise<[number, number][]>)
+        .then((d) => alive && setRows(d))
+        .catch(() => undefined)
+    void load()
+    const t = setInterval(load, 5 * 60_000)
+    return () => {
+      alive = false
+      clearInterval(t)
+    }
+  }, [coin])
+  return rows
+}
+
+export function PriceOiWidget({ coin, onReady }: WidgetProps) {
+  const m = useMarket(coin)
+  const { ref, chart } = useChart({ rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.1, bottom: 0.08 } } })
+  const { data } = useCandles(coin, '1h', MONTH, true)
+  const oi = useOiHistory(coin)
+  const [series, setSeries] = useState<{ price: ReturnType<NonNullable<typeof chart>['addSeries']>; oi: ReturnType<NonNullable<typeof chart>['addSeries']> }>()
+
+  useEffect(() => {
+    if (!chart) return
+    const price = chart.addSeries(LineSeries, { color: CHART_COLORS.blue, lineWidth: 2, priceLineVisible: false })
+    const oiS = chart.addSeries(
+      AreaSeries,
+      {
+        lineColor: CHART_COLORS.violet,
+        topColor: 'rgba(165,134,255,0.35)',
+        bottomColor: 'rgba(165,134,255,0.04)',
+        lineWidth: 1,
+        priceLineVisible: false,
+        priceFormat: { type: 'custom', formatter: (v: number) => fmtCompact(v) },
+      },
+      1,
+    )
+    chart.panes()[1]?.setHeight(52)
+    setSeries({ price, oi: oiS })
+  }, [chart])
+
+  useEffect(() => {
+    if (!series || !data.length) return
+    series.price.setData(data.map((d) => ({ time: ts(d.t), value: d.c })))
+    // Until the bridge has history, show the live value as a flat line so the pane isn't empty.
+    const points = oi.length > 1 ? oi : m ? [[data[0].t, m.openInterest], [data[data.length - 1].t, m.openInterest]] : []
+    series.oi.setData(points.filter(([t]) => t >= data[0].t).map(([t, v]) => ({ time: ts(t), value: v })))
+    chart?.timeScale().fitContent()
+    onReady()
+  }, [series, data, oi, m?.openInterest, chart, onReady]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="absolute inset-0">
+      <div className="absolute top-1 left-2 z-10 flex gap-1">
+        <LegendChip color={CHART_COLORS.blue}>{m?.symbol ?? coin}</LegendChip>
+      </div>
+      <div className="absolute bottom-9 left-2 z-10 text-[10.5px] text-fg-2">Open interest{oi.length < 2 && ' · live (history builds while the bridge runs)'}</div>
+      <div ref={ref} className="absolute inset-0 top-5" />
+    </div>
+  )
+}

@@ -9,6 +9,7 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts'
 import { useEffect, useRef, useState } from 'react'
+import { fmtPx } from '@/lib/format'
 
 export const CHART_COLORS = {
   up: '#22c55e',
@@ -40,6 +41,7 @@ export const chartTheme: DeepPartial<ChartOptions> = {
     horzLine: { color: '#55555e', style: LineStyle.Dashed, width: 1, labelBackgroundColor: '#2c2c32' },
   },
   handleScale: { axisPressedMouseMove: true },
+  localization: { priceFormatter: (p: number) => fmtPx(p) },
 }
 
 export const ts = (ms: number) => Math.floor(ms / 1000) as UTCTimestamp
