@@ -13,6 +13,7 @@ Crypto perps and HIP-3 markets (equities, indices, commodities, FX) in one termi
 ![Electron](https://img.shields.io/badge/Electron-2b2e3a?logo=electron&logoColor=9feaf9)
 ![Hyperliquid](https://img.shields.io/badge/Hyperliquid-perps_%2B_HIP--3-97fce4)
 ![MCP](https://img.shields.io/badge/MCP-tools-8b6cf6)
+[![CI](https://github.com/joshjkns/impulse/actions/workflows/ci.yml/badge.svg)](https://github.com/joshjkns/impulse/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2e84f5)](LICENSE)
 
 </div>
@@ -41,6 +42,10 @@ Crypto perps and HIP-3 markets (equities, indices, commodities, FX) in one termi
 | Themes & accents |
 | --- |
 | ![Settings: Impulse, Midnight, Black, Graphite and Mocha themes](docs/themes.png) |
+
+## Download
+
+Grab the desktop app for macOS, Windows or Linux from the [latest release](https://github.com/joshjkns/impulse/releases/latest). Builds are unsigned, so the release notes explain how to open them the first time.
 
 ## Quick start
 
@@ -71,6 +76,7 @@ pnpm dist         # package for this OS → release/ (dist:mac, dist:win, dist:l
   - **Browser wallet** (Phantom, MetaMask, Rabby, any extension): Electron can't load extensions, so Connect opens a small pairing page (`wallet.html`) in your normal browser. Pick the wallet there and keep the tab open. The bridge relays every wallet request (connect, enabling trading, deposits, withdrawals) to it, and you approve in the extension as usual (`bridge/wallet.ts`, `src/wallet/browserWallet.ts`).
   - **Coinbase Wallet** opens its own popup window inside the app.
   - **WalletConnect / mobile wallets** pair by QR code when `VITE_WALLETCONNECT_PROJECT_ID` is set at build time.
+- **Releases:** push a version tag (`git tag v0.2.0 && git push origin v0.2.0`). `.github/workflows/release.yml` builds macOS (arm64 + x64), Windows and Linux in parallel and publishes them to a GitHub release, with the tag as the app version. Tags with a hyphen (`v0.2.0-beta.1`) are marked as pre-releases.
 - Builds are unsigned. For signed/notarised macOS builds set the usual electron-builder env vars (`CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, …) before `pnpm dist:mac`.
 
 Optional `.env.local`:

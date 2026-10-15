@@ -5,6 +5,7 @@
   "version": "0.1.0",
   "description": "AI trading terminal for Hyperliquid",
   "author": "Impulse",
+  "homepage": "https://github.com/joshjkns/impulse",
   "license": "MIT",
   "type": "module",
   "main": "electron/main.ts",
@@ -111,6 +112,7 @@
     },
     "linux": {
       "category": "Finance",
+      "maintainer": "joshjkns <joshjkns@users.noreply.github.com>",
       "target": [
         "AppImage",
         "deb"
