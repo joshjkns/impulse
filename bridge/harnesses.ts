@@ -123,7 +123,8 @@ export const HARNESSES: Harness[] = [
     sessions: false,
     homepage: 'https://x.ai/cli',
     launch: (c) => ({
-      parser: 'anthropic-sse',
+      // Grok's stream-json mirrors Claude Code's (assistant messages + stream_event partials).
+      parser: 'claude',
       files: {
         '.grok/config.toml': [
           '[mcp_servers.impulse]',
@@ -135,7 +136,7 @@ export const HARNESSES: Harness[] = [
           ...Object.entries(c.mcp.env).map(([k, v]) => `${k} = ${toml(v)}`),
         ].join('\n'),
       },
-      args: ['-p', withSystem(c), '--output-format', 'streaming-messages-json', '--always-approve', '--no-subagents', ...(c.model ? ['-m', c.model] : [])],
+      args: ['-p', withSystem(c), '--output-format', 'streaming-messages-json', '--include-partial-messages', '--always-approve', '--trust', '--no-subagents', ...(c.model ? ['-m', c.model] : [])],
     }),
   },
   {
@@ -200,6 +201,7 @@ export const HARNESSES: Harness[] = [
           2,
         ),
       },
+      env: { OPENCODE_CONFIG: path.join(c.workdir, 'opencode.json') },
       args: ['run', '--format', 'json', ...(c.model ? ['-m', c.model] : []), ...(c.session ? ['-s', c.session] : []), c.session ? c.prompt : withSystem(c)],
     }),
   },

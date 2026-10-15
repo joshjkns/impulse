@@ -13,6 +13,7 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { createServer, type IncomingMessage } from 'node:http'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { createInterface } from 'node:readline'
 import { fileURLToPath } from 'node:url'
@@ -56,6 +57,23 @@ let briefing: unknown = existsSync(briefingFile) ? JSON.parse(readFileSync(brief
 
 const alerts = new AlertEngine(DATA_DIR)
 alerts.ntfyTopic = settings.ntfyTopic ?? ''
+
+/** Harness errors are often raw API JSON; surface just the human message. */
+function cleanError(e?: string) {
+  if (!e) return e
+  const t = e.trim()
+  const start = t.indexOf('{')
+  if (start >= 0) {
+    try {
+      const j = JSON.parse(t.slice(start)) as { message?: string; error?: { message?: string } | string }
+      const msg = typeof j.error === 'string' ? j.error : (j.error?.message ?? j.message)
+      if (msg) return msg
+    } catch {
+      /* not JSON */
+    }
+  }
+  return t
+}
 
 const send = (ws: WebSocket, msg: unknown) => ws.readyState === ws.OPEN && ws.send(JSON.stringify(msg))
 const broadcast = (msg: unknown) => clients.forEach((c) => send(c, msg))
@@ -202,10 +220,11 @@ function startRun(req: ChatRequest, origin?: WebSocket) {
   const done = (ok: boolean, extra: Record<string, unknown> = {}) => {
     if (!runs.has(run.id)) return
     runs.delete(run.id)
-    broadcast({ type: 'run_done', runId: run.id, threadId: run.threadId, ok: ok && !run.cancelled, cancelled: run.cancelled, durationMs: Date.now() - run.startedAt, steps: run.steps, ...extra })
+    broadcast({ type: 'run_done', runId: run.id, threadId: run.threadId, ok: ok && !run.cancelled, cancelled: run.cancelled, durationMs: Date.now() - run.startedAt, steps: run.steps, ...extra, error: cleanError(extra.error as string | undefined) })
   }
 
-  const workdir = path.join(DATA_DIR, 'runs', req.threadId.replace(/[^\w-]/g, ''))
+  // Outside any git repo, so harnesses treat the run folder (and the MCP config we drop there) as the project.
+  const workdir = path.join(tmpdir(), 'impulse-runs', req.threadId.replace(/[^\w-]/g, ''))
   mkdirSync(workdir, { recursive: true })
   const env = { IMPULSE_RUN: run.id, IMPULSE_BRIDGE_URL: URL_BASE }
   const mcpScript = path.join(here, 'mcp.ts')
