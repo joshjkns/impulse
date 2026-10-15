@@ -1,24 +1,20 @@
 import { useConnectModal } from '@rainbow-me/rainbowkit'
-import { ChevronDown, GripVertical } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useWalletClient } from 'wagmi'
 import { CoinIcon, LivePrice } from '@/components/common'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { fmtPct, fmtPx, fmtUsd, tone } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { enableTrading, placeOrder, useAccount } from '@/store/account'
 import type { ProposedOrder } from '@/store/chat'
 import { useMarket } from '@/store/markets'
 import { usePrefs } from '@/store/prefs'
+import { CoinSwitcher } from './CoinSwitcher'
 import { LeveragePanel } from './LeverageControl'
+import { PaneGrip } from './PaneGrip'
 import { SegmentSlider } from './SegmentSlider'
 
 type OrderType = 'market' | 'limit'
@@ -47,7 +43,7 @@ export function OrderTicket({
 }) {
   const m = useMarket(coin)
   const acct = useAccount()
-  const { favorites, defaultLeverage, defaultMarginMode, defaultOrderType, maxSlippagePct, confirmOrders } = usePrefs()
+  const { defaultLeverage, defaultMarginMode, defaultOrderType, maxSlippagePct, confirmOrders } = usePrefs()
   const { data: wallet } = useWalletClient()
   const { openConnectModal } = useConnectModal()
 
@@ -144,23 +140,9 @@ export function OrderTicket({
         </div>
       )}
 
-      <div className="flex gap-1.5">
-        {!card && <GripVertical className="mt-2 size-3.5 shrink-0 text-fg-3" />}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex h-[34px] items-center gap-1 rounded-[10px] bg-chip/70 px-2.5 text-fg-2 transition-colors hover:bg-chip">
-              <CoinIcon coin={coin} className="size-4 rounded-full" />
-              <ChevronDown className="size-3" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48">
-            {favorites.map((c) => (
-              <DropdownMenuItem key={c} onSelect={() => onCoinChange?.(c)}>
-                <CoinIcon coin={c} className="size-4" /> {c.replace(/^xyz:/, '')}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <div className="flex items-center gap-1.5">
+        {!card && <PaneGrip />}
+        <CoinSwitcher coin={coin} onChange={onCoinChange} className="h-[34px] rounded-[10px] px-2.5" />
         <PillButton onClick={() => !m?.onlyIsolated && setIsolated(!isolated)} title={m?.onlyIsolated ? 'This market only supports isolated margin' : undefined}>
           {isolated ? 'Isolated' : 'Cross'}
         </PillButton>

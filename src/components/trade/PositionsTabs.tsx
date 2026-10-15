@@ -1,4 +1,3 @@
-import { GripVertical } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -7,6 +6,7 @@ import { fmtDateTime, fmtPct, fmtPx, fmtUsd, tone } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { cancelOrder, closePosition, useAccount } from '@/store/account'
 import { useMarkets } from '@/store/markets'
+import { PaneGrip } from './PaneGrip'
 
 const TABS = ['Positions', 'Open orders', 'Trade history', 'Order history', 'Funding history'] as const
 type TabName = (typeof TABS)[number]
@@ -21,7 +21,7 @@ export function PositionsTabs({ className }: { className?: string }) {
   return (
     <div className={cn('flex min-h-0 flex-col', className)}>
       <div className="flex h-10 shrink-0 items-center gap-1 border-b border-white/[0.04] px-2 text-[12.5px]">
-        <GripVertical className="size-3.5 text-fg-3" />
+        <PaneGrip />
         {TABS.map((t) => (
           <button key={t} onClick={() => setTab(t)} className={cn('relative px-2.5 py-1 transition-colors', tab === t ? 'text-fg' : 'text-fg-2 hover:text-fg')}>
             {t}

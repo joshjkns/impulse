@@ -25,7 +25,7 @@ export default function Workspaces() {
   return (
     <div className="flex h-full flex-col px-2 pb-1">
       <TabBar />
-      <div className="flex min-h-0 flex-1 gap-2">
+      <div className="flex min-h-0 flex-1">
         <div className="relative min-w-0 flex-1">
           <AnimatePresence mode="popLayout" initial={false}>
             {tab ? (

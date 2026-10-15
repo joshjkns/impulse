@@ -1,4 +1,5 @@
-import { LayoutGrid } from 'lucide-react'
+import { ArrowLeftRight, LayoutGrid } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useRef, useState } from 'react'
 import ReactGridLayout, {
   getCompactor,
@@ -126,6 +127,40 @@ function tileResize(base: readonly Item[], resized: Item, handle: ResizeHandleAx
   return verticalCompactor.compact(out, GRID_COLS)
 }
 
+/* ------------------------------------------------------------------ swap preview */
+
+/** While a drop would swap, outlines the dragged widget's old cell, which is where the other widget will go. */
+function SwapPreview({ base, from, to, width, rowHeight, title }: { base: readonly Item[]; from?: string; to?: string; width: number; rowHeight: number; title?: string }) {
+  const cell = to && base.find((b) => b.i === from)
+  const colW = (width - GAP * (GRID_COLS - 1)) / GRID_COLS
+  return (
+    <AnimatePresence>
+      {cell && (
+        <motion.div
+          key={cell.i}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.14, ease: [0.2, 0.9, 0.1, 1] }}
+          className="pointer-events-none absolute z-[2] grid place-items-center rounded-[12px] border-[1.5px] border-dashed border-brand/60 bg-brand/[0.05]"
+          style={{
+            left: cell.x * (colW + GAP),
+            top: cell.y * (rowHeight + GAP),
+            width: cell.w * colW + (cell.w - 1) * GAP,
+            height: cell.h * rowHeight + (cell.h - 1) * GAP,
+          }}
+        >
+          {title && (
+            <span className="flex items-center gap-1.5 rounded-full bg-[#202127] px-3 py-1.5 text-[12px] text-fg shadow-lg ring-1 ring-white/10">
+              <ArrowLeftRight className="size-3.5 text-brand" /> {title}
+            </span>
+          )}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
 /* ------------------------------------------------------------------ grid */
 
 type Press = { kind: 'drag' } | { kind: 'resize'; id: string; handle: ResizeHandleAxis } | null
@@ -143,6 +178,8 @@ export function CustomGrid({ tab }: { tab: Extract<Tab, { kind: 'custom' }> }) {
   /** Set on pointer-down, before the library's drag/resize starts, so its first move already has the right rules. */
   const [press, setPress] = useState<Press>(null)
   const [target, setTarget] = useState<string>()
+  /** The widget being dragged, so a swap preview can mark where the other widget will land. */
+  const [dragging, setDragging] = useState<string>()
   const rowHeight = Math.max(8, (height - GAP * (GRID_ROWS - 1)) / GRID_ROWS)
   const kinds = useMemo(() => new Map(tab.widgets.map((w) => [w.id, w.kind])), [tab.widgets])
   const base = useMemo(() => tab.layout.map((l) => ({ ...l, ...minSize(kinds.get(l.i) ?? 'note') })), [tab.layout, kinds])
@@ -176,6 +213,7 @@ export function CustomGrid({ tab }: { tab: Extract<Tab, { kind: 'custom' }> }) {
     setMode(null)
     setPress(null)
     setTarget(undefined)
+    setDragging(undefined)
     resizeRef.current = null
     const next = strip(l)
     // A click on the header is a zero-distance drag; don't let it pin an auto-tiled layout.
@@ -224,6 +262,7 @@ export function CustomGrid({ tab }: { tab: Extract<Tab, { kind: 'custom' }> }) {
             borderRadius={4}
             className={cn('pointer-events-none absolute inset-x-0 top-0 transition-opacity duration-150', mode ? 'opacity-100' : 'opacity-0')}
           />
+          <SwapPreview base={base} from={dragging} to={target} width={width} rowHeight={rowHeight} title={tab.widgets.find((w) => w.id === target)?.title} />
           <ReactGridLayout
             width={width}
             layout={layout}
@@ -237,7 +276,7 @@ export function CustomGrid({ tab }: { tab: Extract<Tab, { kind: 'custom' }> }) {
                 <span ref={ref as React.Ref<HTMLSpanElement>} data-axis={axis} className={`grid-handle grid-handle-${axis}`} />
               ),
             }}
-            onDragStart={() => setMode('drag')}
+            onDragStart={(_l, _old, item) => (setMode('drag'), setDragging(item?.i))}
             onDrag={(_l, _old, item) => item && setTarget(swapTarget(base, item)?.i)}
             onDragStop={(l, _old, item) => commit(item ? resolveDrop(base, item) : l)}
             onResizeStart={() => setMode('resize')}

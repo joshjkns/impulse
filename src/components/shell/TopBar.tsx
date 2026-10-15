@@ -2,6 +2,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Eye, X } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router'
 import { LogoMark } from '@/components/brand/Logo'
+import { AgentAvatar, useToggleChat } from '@/components/chat/ChatHost'
 import { Avatar } from '@/components/settings/AccountPages'
 import { Kbd } from '@/components/common'
 import { shortAddr } from '@/lib/format'
@@ -45,10 +46,32 @@ export function TopBar() {
           Search or do anything...
           <Kbd>/</Kbd>
         </button>
+        <ChatButton />
         <WatchingChip />
         <AccountButton />
       </div>
     </header>
+  )
+}
+
+/** Always-visible way into the agent: docks it on workspaces, opens the big window elsewhere. */
+function ChatButton() {
+  const toggle = useToggleChat()
+  const mode = useUI((s) => s.chatMode)
+  const onWorkspaces = useLocation().pathname.startsWith('/workspaces')
+  const open = mode === 'modal' || (mode === 'docked' && onWorkspaces)
+  return (
+    <button
+      onClick={toggle}
+      className={cn(
+        'flex h-[30px] items-center gap-2 rounded-[9px] pr-2.5 pl-1.5 text-[12.5px] ring-1 transition-colors duration-150',
+        open ? 'bg-raised text-fg ring-[#33333a]' : 'bg-field text-fg-2 ring-line hover:text-fg hover:ring-[#33333a]',
+      )}
+      title="Ask Impulse (⌘J)"
+    >
+      <AgentAvatar size={18} />
+      Ask Impulse
+    </button>
   )
 }
 

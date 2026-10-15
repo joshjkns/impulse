@@ -68,6 +68,12 @@ function applyCtx(m: Market, c: PerpCtx): Market {
   }
 }
 
+/** How often live market numbers reach the UI. */
+const FLUSH_MS = 250
+
+const sameCtx = (m: Market, c: PerpCtx) =>
+  m.markPx === +c.markPx && m.oraclePx === +c.oraclePx && m.funding === +c.funding && m.dayNtlVlm === +c.dayNtlVlm && m.prevDayPx === +c.prevDayPx && m.openInterest === +c.openInterest * +c.markPx && m.midPx === (c.midPx ? +c.midPx : +c.markPx)
+
 let started = false
 let retries = 0
 
@@ -131,17 +137,29 @@ export const useMarkets = create<MarketsState>((set, get) => ({
         .map((m) => m.coin)
       set({ markets, order, loaded: true })
 
+      // The ctx feed fires several times a second per dex. Buffer it and flush at most every FLUSH_MS,
+      // replacing only markets whose numbers moved, so subscribers re-render a few times a second instead of per message.
+      const pending = new Map<string, PerpCtx>()
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const flush = () => {
+        timer = undefined
+        const cur = get().markets
+        let next: Record<string, Market> | undefined
+        for (const [coin, c] of pending) {
+          const m = cur[coin]
+          if (!m || sameCtx(m, c)) continue
+          next ??= { ...cur }
+          next[coin] = applyCtx(m, c)
+        }
+        pending.clear()
+        if (next) set({ markets: next })
+      }
       for (const dex of DEXES) {
         subs.assetCtxs(dex ? { dex } : {}, (ev) => {
           const names = universes[ev.dex as Dex] ?? universes[dex]
           if (!names) return
-          const cur = get().markets
-          const next = { ...cur }
-          ev.ctxs.forEach((c, i) => {
-            const coin = names[i]
-            if (next[coin]) next[coin] = applyCtx(next[coin], c as PerpCtx)
-          })
-          set({ markets: next })
+          ev.ctxs.forEach((c, i) => names[i] && pending.set(names[i], c as PerpCtx))
+          timer ??= setTimeout(flush, FLUSH_MS)
         })
       }
     } catch (e) {

@@ -1,13 +1,14 @@
-import { ArrowLeftRight, ChevronDown, GripVertical } from 'lucide-react'
+import { ArrowLeftRight, ChevronDown } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { LogoPulse } from '@/components/brand/Logo'
-import { CoinIcon } from '@/components/common'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { fmtPx } from '@/lib/format'
 import { subs } from '@/lib/hl'
 import { cn } from '@/lib/utils'
 import { useMarket } from '@/store/markets'
+import { CoinSwitcher } from './CoinSwitcher'
+import { PaneGrip } from './PaneGrip'
 
 export interface Level {
   px: number
@@ -104,9 +105,8 @@ export function Orderbook({ coin, className }: { coin: string; className?: strin
   return (
     <div className={cn('flex min-h-0 flex-col', className)}>
       <div className="flex h-10 shrink-0 items-center gap-1 px-2 text-[12.5px]">
-        <GripVertical className="size-3.5 text-fg-3" />
-        <CoinIcon coin={coin} className="size-3.5 rounded-full" />
-        <ChevronDown className="size-3 text-fg-3" />
+        <PaneGrip />
+        <CoinSwitcher coin={coin} />
         <div className="ml-auto flex items-center">
           {(['book', 'trades'] as const).map((t, i) => (
             <div key={t} className="flex items-center">
