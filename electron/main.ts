@@ -75,6 +75,8 @@ async function startBridge() {
       ELECTRON_RUN_AS_NODE: '1',
       // Packaged builds keep alerts, settings and OI history with the app's data; dev runs share the repo's .impulse/.
       ...(app.isPackaged ? { IMPULSE_DATA_DIR: path.join(app.getPath('userData'), 'bridge') } : {}),
+      // The browser-wallet pairing page is served by the bridge from the build (the dev server serves it in dev).
+      IMPULSE_STATIC: DIST,
     },
   })
   bridge.stdout?.pipe(log)
@@ -178,9 +180,15 @@ function createWindow() {
   win.on('close', () => win && saveState(win))
   win.on('closed', () => (win = null))
 
-  // Links (docs, explorers, wallet deep links) open in the user's browser, never inside the app.
+  // Wallet popups that talk back to the page through window.opener (Coinbase Wallet) open as child windows;
+  // other links (docs, explorers, wallet deep links, the browser-wallet page) open in the user's browser.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^(https?|mailto|wc|metamask|rainbow):/i.test(url)) void shell.openExternal(url)
+    if (isWalletPopup(url))
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: { width: 420, height: 720, backgroundColor: '#0a0b0d', autoHideMenuBar: true, parent: win ?? undefined },
+      }
+    if (/^(https?|mailto|wc|metamask|rainbow|phantom):/i.test(url)) void shell.openExternal(url)
     return { action: 'deny' }
   })
   const home = devUrl ?? APP_URL
@@ -191,6 +199,16 @@ function createWindow() {
   })
 
   void win.loadURL(home)
+}
+
+const WALLET_POPUP_HOSTS = ['keys.coinbase.com', 'www.coinbase.com', 'coinbase.com']
+function isWalletPopup(url: string) {
+  try {
+    const u = new URL(url)
+    return u.protocol === 'https:' && WALLET_POPUP_HOSTS.includes(u.hostname)
+  } catch {
+    return false
+  }
 }
 
 function showWindow() {

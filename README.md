@@ -25,7 +25,10 @@ pnpm dist         # package for this OS → release/ (dist:mac, dist:win, dist:l
 - The UI is served from `impulse://app/`, so local storage (workspaces, layouts, chats) persists across launches.
 - Packaged builds keep bridge state in the OS user-data folder (Help ▸ Open data folder) instead of `.impulse/`; the bridge log is under Help ▸ Bridge log.
 - On macOS the app keeps running with its window closed, so alerts keep firing and arrive as native notifications.
-- Browser-extension wallets aren't available inside Electron. Connect with WalletConnect, which needs `VITE_WALLETCONNECT_PROJECT_ID` set at build time.
+- Wallets in the app:
+  - **Browser wallet** (Phantom, MetaMask, Rabby, any extension): Electron can't load extensions, so Connect opens a small pairing page (`wallet.html`) in your normal browser. Pick the wallet there and keep the tab open. The bridge relays every wallet request (connect, enabling trading, deposits, withdrawals) to it, and you approve in the extension as usual (`bridge/wallet.ts`, `src/wallet/browserWallet.ts`).
+  - **Coinbase Wallet** opens its own popup window inside the app.
+  - **WalletConnect / mobile wallets** pair by QR code when `VITE_WALLETCONNECT_PROJECT_ID` is set at build time.
 - Builds are unsigned. For signed/notarised macOS builds set the usual electron-builder env vars (`CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, …) before `pnpm dist:mac`.
 
 Optional `.env.local`:

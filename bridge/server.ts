@@ -25,6 +25,7 @@ import { oiSeries, startOiRecorder } from './oi.ts'
 import { createParser } from './parse.ts'
 import { smartMoney, onSmartMoney, startSmartMoney } from './smartmoney.ts'
 import { SYSTEM_PROMPT, TOOLS, toolByName } from './tools.ts'
+import { handleWalletMessage, isWalletPage, serveWalletPage } from './wallet.ts'
 
 const PORT = Number(process.env.IMPULSE_BRIDGE_PORT ?? 7420)
 const HOST = '127.0.0.1'
@@ -374,6 +375,7 @@ const server = createServer(async (req, res) => {
     }
     return
   }
+  if (req.method === 'GET' && req.url && serveWalletPage(req.url, res)) return
   res.writeHead(404).end()
 })
 
@@ -388,6 +390,11 @@ wss.on('connection', (ws) => {
     try {
       msg = JSON.parse(String(raw))
     } catch {
+      return
+    }
+    if (handleWalletMessage(ws, msg)) {
+      // Pairing pages in the user's browser aren't Impulse windows: no chat runs, alerts or "tab open" status.
+      if (isWalletPage(ws)) clients.delete(ws)
       return
     }
     switch (msg.type) {
