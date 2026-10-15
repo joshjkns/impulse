@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { useEffect } from 'react'
 import { Route, Routes, useLocation, useNavigate } from 'react-router'
 import { useAccount as useWagmiAccount } from 'wagmi'
@@ -18,6 +18,7 @@ import Home from '@/pages/Home'
 import Workspaces from '@/pages/Workspaces'
 import { useAccount } from '@/store/account'
 import { useMarkets } from '@/store/markets'
+import { usePrefs } from '@/store/prefs'
 import { useUI } from '@/store/ui'
 
 export default function App() {
@@ -25,11 +26,13 @@ export default function App() {
   const { address } = useWagmiAccount()
   const setAddress = useAccount((s) => s.setAddress)
   const openCommand = useUI((s) => s.openCommand)
+  const watching = useUI((s) => s.watching)
+  const reduceMotion = usePrefs((s) => s.reduceMotion)
   const { pathname } = useLocation()
   const isHome = pathname === '/'
 
   useEffect(() => void start(), [start])
-  useEffect(() => setAddress(address), [address, setAddress])
+  useEffect(() => setAddress(watching ?? address, !!watching), [address, watching, setAddress])
   useBridge()
   const navigate = useNavigate()
   useEffect(() => {
@@ -52,36 +55,38 @@ export default function App() {
   const section = pathname.split('/')[1] || 'home'
 
   return (
-    <div className="flex h-full bg-canvas">
-      <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar />
-        <main className="relative min-h-0 flex-1">
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.div
-              key={section}
-              initial={{ opacity: 0, scale: 0.995 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.16, ease: [0.2, 0.9, 0.1, 1] }}
-              className="absolute inset-0"
-            >
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/workspaces/:id?" element={<Workspaces />} />
-                <Route path="/feed" element={<Feed />} />
-              </Routes>
-            </motion.div>
-          </AnimatePresence>
-        </main>
-        <Footer />
+    <MotionConfig reducedMotion={reduceMotion ? 'always' : 'user'}>
+      <div className="flex h-full bg-canvas">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <TopBar />
+          <main className="relative min-h-0 flex-1">
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.div
+                key={section}
+                initial={{ opacity: 0, scale: 0.995 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.16, ease: [0.2, 0.9, 0.1, 1] }}
+                className="absolute inset-0"
+              >
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/workspaces/:id?" element={<Workspaces />} />
+                  <Route path="/feed" element={<Feed />} />
+                </Routes>
+              </motion.div>
+            </AnimatePresence>
+          </main>
+          <Footer />
+        </div>
+        {isHome && <PortfolioPanel />}
+        <ChatHost />
+        <CommandMenu />
+        <SettingsDialog />
+        <Notifications />
+        <Toaster />
+        <Splash />
       </div>
-      {isHome && <PortfolioPanel />}
-      <ChatHost />
-      <CommandMenu />
-      <SettingsDialog />
-      <Notifications />
-      <Toaster />
-      <Splash />
-    </div>
+    </MotionConfig>
   )
 }

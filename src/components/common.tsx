@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNo
 import { fmtPx } from '@/lib/format'
 import { iconUrl } from '@/lib/hl'
 import { cn } from '@/lib/utils'
+import { usePrefs } from '@/store/prefs'
 
 export function CoinIcon({ coin, className }: { coin: string; className?: string }) {
   const [failed, setFailed] = useState(false)
@@ -67,13 +68,18 @@ export function Sparkline({
 export function LivePrice({ value, decimals, className }: { value: number; decimals?: number; className?: string }) {
   const prev = useRef(value)
   const [flash, setFlash] = useState<'up' | 'down' | null>(null)
+  const enabled = usePrefs((s) => s.priceFlash)
   useEffect(() => {
     if (value === prev.current) return
+    if (!enabled) {
+      prev.current = value
+      return
+    }
     setFlash(value > prev.current ? 'up' : 'down')
     prev.current = value
     const t = setTimeout(() => setFlash(null), 450)
     return () => clearTimeout(t)
-  }, [value])
+  }, [value, enabled])
   return (
     <span
       className={cn(
@@ -85,6 +91,29 @@ export function LivePrice({ value, decimals, className }: { value: number; decim
     >
       {fmtPx(value, decimals)}
     </span>
+  )
+}
+
+/** A button that, when "Confirm orders" is on, needs a second press within 3s before it fires. */
+export function ConfirmButton({ onConfirm, children, ...p }: Omit<ComponentProps<'button'>, 'onClick'> & { onConfirm: () => void }) {
+  const confirm = usePrefs((s) => s.confirmOrders)
+  const [armed, setArmed] = useState(false)
+  useEffect(() => {
+    if (!armed) return
+    const t = setTimeout(() => setArmed(false), 3000)
+    return () => clearTimeout(t)
+  }, [armed])
+  return (
+    <button
+      {...p}
+      onClick={() => {
+        if (confirm && !armed) return setArmed(true)
+        setArmed(false)
+        onConfirm()
+      }}
+    >
+      {armed ? 'Confirm?' : children}
+    </button>
   )
 }
 

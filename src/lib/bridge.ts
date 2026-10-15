@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { create } from 'zustand'
 import { runUiTool } from '@/lib/uiTools'
 import { useChat } from '@/store/chat'
+import { usePrefs } from '@/store/prefs'
 import { useUI } from '@/store/ui'
 
 export const BRIDGE_WS = (import.meta.env.VITE_IMPULSE_BRIDGE as string | undefined) ?? 'ws://127.0.0.1:7420/ws'
@@ -76,6 +77,28 @@ function pushFeed(item: FeedItem) {
     localStorage.setItem('impulse.feed', JSON.stringify(feed))
   } catch {
     /* ignore */
+  }
+}
+
+/** Two short sine tones; no audio asset needed. */
+export function playChime() {
+  try {
+    const ctx = new AudioContext()
+    ;[880, 1320].forEach((f, i) => {
+      const o = ctx.createOscillator()
+      const g = ctx.createGain()
+      o.frequency.value = f
+      const t = ctx.currentTime + i * 0.12
+      g.gain.setValueAtTime(0.0001, t)
+      g.gain.exponentialRampToValueAtTime(0.15, t + 0.02)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25)
+      o.connect(g).connect(ctx.destination)
+      o.start(t)
+      o.stop(t + 0.26)
+    })
+    setTimeout(() => void ctx.close(), 600)
+  } catch {
+    /* audio unavailable */
   }
 }
 
@@ -157,7 +180,9 @@ function handle(msg: Msg) {
       )
       break
     case 'alert_fired': {
-      useUI.getState().notify({ title: msg.title, body: msg.body, kind: 'alert' })
+      const { alertPopups, alertSound } = usePrefs.getState()
+      if (alertPopups) useUI.getState().notify({ title: msg.title, body: msg.body, kind: 'alert' })
+      if (alertSound) playChime()
       pushFeed({ id: `${msg.alert.id}.${msg.at}`, title: msg.title, body: msg.body, at: msg.at, alertId: msg.alert.id, coin: msg.alert.coin })
       if (document.hidden && 'Notification' in window && Notification.permission === 'granted')
         new Notification(msg.title, { body: msg.body, icon: '/favicon.svg' })

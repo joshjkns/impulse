@@ -47,15 +47,15 @@ export function OrderTicket({
 }) {
   const m = useMarket(coin)
   const acct = useAccount()
-  const favorites = usePrefs((s) => s.favorites)
+  const { favorites, defaultLeverage, defaultMarginMode, defaultOrderType, maxSlippagePct, confirmOrders } = usePrefs()
   const { data: wallet } = useWalletClient()
   const { openConnectModal } = useConnectModal()
 
   const pref = acct.leverage[coin]
   const maxLev = m?.maxLeverage ?? 20
-  const [lev, setLev] = useState(initial?.leverage ?? pref?.value ?? Math.min(6, maxLev))
-  const [isolated, setIsolated] = useState(pref?.isolated ?? true)
-  const [type, setType] = useState<OrderType>(initial?.type ?? 'market')
+  const [lev, setLev] = useState(initial?.leverage ?? pref?.value ?? Math.min(defaultLeverage, maxLev))
+  const [isolated, setIsolated] = useState(pref?.isolated ?? defaultMarginMode === 'isolated')
+  const [type, setType] = useState<OrderType>(initial?.type ?? defaultOrderType)
   const [side, setSide] = useState<'long' | 'short'>(initial?.side ?? 'long')
   const [size, setSize] = useState(initial ? String(Math.round(initial.usd)) : '')
   const [limitPx, setLimitPx] = useState(initial?.limitPx ? String(initial.limitPx) : '')
@@ -65,6 +65,7 @@ export function OrderTicket({
   const [sl, setSl] = useState(initial?.stopLoss ? String(initial.stopLoss) : '')
   const [levOpen, setLevOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [armed, setArmed] = useState(false)
   const root = useRef<HTMLDivElement>(null)
 
   useEffect(() => setLev((l) => Math.min(l, maxLev)), [maxLev])
@@ -78,12 +79,19 @@ export function OrderTicket({
   const px = type === 'limit' && +limitPx ? +limitPx : (m?.midPx ?? 0)
   const liq = useMemo(() => liquidationPx(px, notional, lev, maxLev, side === 'long' ? 1 : -1), [px, notional, lev, maxLev, side])
   const margin = notional / lev
-  const slippage = m && notional ? Math.min(8, 0.002 + (notional / Math.max(1, m.dayNtlVlm)) * 100 * 2) : 0
+  useEffect(() => {
+    if (!armed) return
+    const t = setTimeout(() => setArmed(false), 3000)
+    return () => clearTimeout(t)
+  }, [armed])
+  const slippage = m && notional ? Math.min(maxSlippagePct, 0.002 + (notional / Math.max(1, m.dayNtlVlm)) * 100 * 2) : 0
   const valid = notional >= 10 && !!m && (type === 'market' || +limitPx > 0)
 
   const place = async () => {
     if (!acct.address) return openConnectModal?.()
-    if (!m) return
+    if (!m || acct.readOnly) return
+    if (confirmOrders && !armed) return setArmed(true)
+    setArmed(false)
     setBusy(true)
     try {
       if (!acct.agentKey) {
@@ -231,7 +239,7 @@ export function OrderTicket({
       <div className="flex items-center justify-between text-[12px]">
         <span className="text-fg-2">Slippage</span>
         <span className="dotted-underline num text-fg">
-          Est: {slippage.toFixed(4)}% / Max: 8.00%
+          Est: {slippage.toFixed(4)}% / Max: {maxSlippagePct.toFixed(2)}%
         </span>
       </div>
 
@@ -259,7 +267,7 @@ export function OrderTicket({
       <motion.button
         whileTap={{ scale: 0.985 }}
         onClick={place}
-        disabled={busy || (!!acct.address && !valid)}
+        disabled={busy || acct.readOnly || (!!acct.address && !valid)}
         className={cn(
           'h-[42px] rounded-[12px] text-[13.5px] font-medium transition-colors duration-150',
           !acct.address
@@ -272,7 +280,15 @@ export function OrderTicket({
           busy && 'opacity-70',
         )}
       >
-        {!acct.address ? 'Connect wallet' : busy ? 'Placing…' : `Place ${side}`}
+        {!acct.address
+          ? 'Connect wallet'
+          : acct.readOnly
+            ? 'Watching (read only)'
+            : busy
+              ? 'Placing…'
+              : armed
+                ? `Confirm ${side} ${fmtUsd(notional)}`
+                : `Place ${side}`}
       </motion.button>
 
       {(card || notional > 0) && (

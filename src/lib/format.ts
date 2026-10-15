@@ -1,3 +1,5 @@
+import { usePrefs } from '@/store/prefs'
+
 /** Number formatting tuned to how the terminal displays prices (5 significant figures, Hyperliquid style). */
 
 export function sigDecimals(px: number, sig = 5) {
@@ -45,6 +47,13 @@ export function fmtDuration(ms: number) {
   return [h, m, s % 60].map((x) => String(x).padStart(2, '0')).join(':')
 }
 
+export const shortAddr = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
+
+/** Follows the 24-hour clock preference in Settings → Display. */
 export function fmtClock(t: number) {
-  return new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: !usePrefs.getState().clock24h })
+}
+
+export function fmtDateTime(t: number, opts: Intl.DateTimeFormatOptions = {}) {
+  return new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: !usePrefs.getState().clock24h, ...opts })
 }

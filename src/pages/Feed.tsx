@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { LogoMark } from '@/components/brand/Logo'
 import { CoinIcon } from '@/components/common'
 import { bridgeSend, useBridgeStore } from '@/lib/bridge'
-import { fmtPct, tone } from '@/lib/format'
+import { fmtClock, fmtDateTime, fmtPct, tone } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useChat } from '@/store/chat'
 import { useMarkets } from '@/store/markets'
@@ -13,7 +13,7 @@ const ICON = { bell: Bell, globe: Globe, chart: LineChart, bolt: Zap }
 function when(t: number) {
   const d = new Date(t)
   const same = d.toDateString() === new Date().toDateString()
-  return same ? d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return same ? fmtClock(t) : fmtDateTime(t)
 }
 
 export default function Feed() {
