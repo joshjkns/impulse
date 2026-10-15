@@ -20,6 +20,7 @@
   --color-hover: var(--hover);
   --color-field: var(--field);
   --color-chip: var(--chip);
+  --color-chip-hover: var(--chip-hover);
   --color-line: var(--line);
   --color-fg: var(--fg);
   --color-fg-2: var(--fg-2);
@@ -98,6 +99,7 @@
   --hover: #26262a;
   --field: #1e1e22;
   --chip: #2c2c30;
+  --chip-hover: color-mix(in oklab, var(--chip) 90%, white);
   --line: #24242a;
   --fg: #ececef;
   --fg-2: #9a9aa3;
@@ -107,10 +109,11 @@
   --down: #f0405a;
   --down-soft: #3f2128;
   --brand: #2e84f5;
-  --brand-soft: #1a2536;
+  /* Accent tint over the canvas, so it follows both the theme and the accent. */
+  --brand-soft: color-mix(in oklab, var(--brand) 16%, var(--canvas));
   --violet: #9f7cf5;
   --heart: #ff4b66;
-  --bubble-user: #2e84f5;
+  --bubble-user: var(--brand);
   --bubble-agent: #2a2a30;
 
   /* shadcn tokens mapped onto the palette */
@@ -179,7 +182,7 @@
     height: 8px;
   }
   ::-webkit-scrollbar-thumb {
-    background: #2a2a30;
+    background: var(--chip);
     border-radius: 8px;
     border: 2px solid transparent;
     background-clip: padding-box;

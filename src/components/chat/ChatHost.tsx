@@ -217,11 +217,11 @@ function ChatWindow() {
         initial={{ opacity: 0, scale: 0.965, y: 12 }}
         animate={{ opacity: snap ? 0.55 : 1, scale: 1, y: 0, transition: SURFACE }}
         exit={{ opacity: 0, scale: 0.98, y: 6, transition: { duration: 0.14, ease: EASE } }}
-        className="fixed z-40 flex overflow-hidden rounded-[18px] bg-[#1b1b20] shadow-[0_40px_120px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.08]"
+        className="fixed z-40 flex overflow-hidden rounded-[18px] bg-popover shadow-[0_40px_120px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.08]"
         style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }}
       >
         {wide && (
-          <aside className="flex w-[226px] shrink-0 flex-col bg-[#202127] ring-1 ring-white/[0.04]">
+          <aside className="flex w-[226px] shrink-0 flex-col bg-raised ring-1 ring-white/[0.04]">
             <div onPointerDown={onHeaderDown} onDoubleClick={resetRect} className="flex h-14 shrink-0 cursor-grab items-center gap-1 px-2.5 active:cursor-grabbing">
               <RoundButton onClick={() => setMode('closed')} aria-label="Close" title="Close">
                 <X className="size-3.5" />

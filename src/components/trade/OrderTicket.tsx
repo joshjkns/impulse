@@ -259,7 +259,7 @@ export function OrderTicket({
       </motion.button>
 
       {(card || notional > 0) && (
-        <div className="space-y-2 rounded-[12px] bg-[#222124] px-3.5 py-3 text-[12.5px]">
+        <div className="space-y-2 rounded-[12px] bg-raised px-3.5 py-3 text-[12.5px]">
           <Row k="Liquidation Price" v={liq ? `$${fmtPx(liq)}` : '—'} />
           <Row k="Order Value" v={fmtUsd(notional)} />
           <Row k="Margin Required" v={fmtUsd(margin)} />
@@ -275,7 +275,7 @@ function PillButton({ children, className, ...p }: React.ComponentProps<'button'
     <button
       {...p}
       className={cn(
-        'h-[34px] flex-1 rounded-[10px] bg-chip/80 text-[12.5px] text-fg transition-colors duration-150 hover:bg-[#35353a] active:scale-[0.985]',
+        'h-[34px] flex-1 rounded-[10px] bg-chip/80 text-[12.5px] text-fg transition-colors duration-150 hover:bg-chip-hover active:scale-[0.985]',
         className,
       )}
     >

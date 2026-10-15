@@ -50,7 +50,7 @@ export function CommandMenu() {
   }
 
   return (
-    <CommandDialog open={commandOpen} onOpenChange={(o) => !o && closeCommand()} className="max-w-[560px] border-0 bg-[#18181c] ring-1 ring-white/[0.07] sm:max-w-[560px]">
+    <CommandDialog open={commandOpen} onOpenChange={(o) => !o && closeCommand()} className="max-w-[560px] border-0 bg-popover ring-1 ring-white/[0.07] sm:max-w-[560px]">
       <Command shouldFilter={false} className="bg-transparent">
         <CommandInput value={q} onValueChange={setQ} placeholder={marketsOnly ? 'Open a market…' : 'Search markets or ask Impulse anything…'} />
         <CommandList className="max-h-[420px]">

@@ -40,7 +40,7 @@ export function ScansSidebar() {
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), submit())}
             placeholder="e.g. Korean memory names up today"
-            className="h-20 w-full resize-none rounded-lg bg-field p-2 text-[12.5px] text-fg ring-1 ring-line outline-none placeholder:text-fg-3 focus:ring-[#3a3a42]"
+            className="h-20 w-full resize-none rounded-lg bg-field p-2 text-[12.5px] text-fg ring-1 ring-line outline-none placeholder:text-fg-3 focus:ring-ring"
           />
           <button onClick={submit} className="mt-2 w-full rounded-lg bg-fg py-1.5 text-[12.5px] font-medium text-[#111113] active:scale-[0.99]">
             Create scan

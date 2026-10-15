@@ -41,7 +41,7 @@ export function TopBar() {
       <div className="ml-auto flex items-center gap-2.5">
         <button
           onClick={() => openCommand()}
-          className="flex h-[30px] w-[196px] items-center justify-between rounded-[9px] bg-field px-3 text-[12.5px] text-fg-3 ring-1 ring-line transition-colors hover:text-fg-2 hover:ring-[#33333a]"
+          className="flex h-[30px] w-[196px] items-center justify-between rounded-[9px] bg-field px-3 text-[12.5px] text-fg-3 ring-1 ring-line transition-colors hover:text-fg-2 hover:ring-ring"
         >
           Search or do anything...
           <Kbd>/</Kbd>
@@ -65,7 +65,7 @@ function ChatButton() {
       onClick={toggle}
       className={cn(
         'flex h-[30px] items-center gap-2 rounded-[9px] pr-2.5 pl-1.5 text-[12.5px] ring-1 transition-colors duration-150',
-        open ? 'bg-raised text-fg ring-[#33333a]' : 'bg-field text-fg-2 ring-line hover:text-fg hover:ring-[#33333a]',
+        open ? 'bg-raised text-fg ring-ring' : 'bg-field text-fg-2 ring-line hover:text-fg hover:ring-ring',
       )}
       title="Ask Impulse (⌘J)"
     >

@@ -113,7 +113,7 @@ export function LeveragePanel({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.97, y: -4 }}
           transition={{ duration: 0.16, ease: [0.2, 0.9, 0.1, 1] }}
-          className="fixed z-50 rounded-[16px] bg-[#141417] shadow-[0_30px_80px_rgba(0,0,0,0.6)] ring-1 ring-white/[0.06]"
+          className="fixed z-50 rounded-[16px] bg-panel shadow-[0_30px_80px_rgba(0,0,0,0.6)] ring-1 ring-white/[0.06]"
         >
           <div className="flex items-center gap-2 px-5 pt-4 pb-3">
             <CoinIcon coin={coin} className="size-[18px] rounded-full" />
@@ -171,7 +171,7 @@ export function LeveragePanel({
                 onConfirm(draft)
                 onClose()
               }}
-              className="h-[46px] w-full rounded-[12px] bg-[#232328] text-[14px] font-medium text-fg transition-colors duration-150 hover:bg-[#2b2b31] active:scale-[0.995]"
+              className="h-[46px] w-full rounded-[12px] bg-raised text-[14px] font-medium text-fg transition-colors duration-150 hover:bg-hover active:scale-[0.995]"
             >
               Confirm
             </button>

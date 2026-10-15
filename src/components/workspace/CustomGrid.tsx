@@ -151,7 +151,7 @@ function SwapPreview({ base, from, to, width, rowHeight, title }: { base: readon
           }}
         >
           {title && (
-            <span className="flex items-center gap-1.5 rounded-full bg-[#202127] px-3 py-1.5 text-[12px] text-fg shadow-lg ring-1 ring-white/10">
+            <span className="flex items-center gap-1.5 rounded-full bg-raised px-3 py-1.5 text-[12px] text-fg shadow-lg ring-1 ring-white/10">
               <ArrowLeftRight className="size-3.5 text-brand" /> {title}
             </span>
           )}

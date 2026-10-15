@@ -49,7 +49,7 @@ export function SettingsDialog() {
 
   return (
     <Dialog open={open} onOpenChange={(o) => openSettings(o)}>
-      <DialogContent className="flex h-[min(640px,88vh)] gap-0 overflow-hidden border-0 bg-[#18181c] p-0 ring-1 ring-white/[0.07] sm:max-w-[820px]">
+      <DialogContent className="flex h-[min(640px,88vh)] gap-0 overflow-hidden border-0 bg-popover p-0 ring-1 ring-white/[0.07] sm:max-w-[820px]">
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <DialogDescription className="sr-only">Wallet, accounts, trading, display, notifications, agents and AI settings.</DialogDescription>
 

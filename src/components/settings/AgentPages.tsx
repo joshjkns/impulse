@@ -45,7 +45,7 @@ export function AgentPage() {
                 side="bottom"
                 align="end"
               >
-                <button className="flex h-8 max-w-[220px] items-center gap-1.5 rounded-[8px] bg-field px-2.5 text-[12px] ring-1 ring-line hover:ring-[#3a3a42] data-[state=open]:ring-[#3a3a42]">
+                <button className="flex h-8 max-w-[220px] items-center gap-1.5 rounded-[8px] bg-field px-2.5 text-[12px] ring-1 ring-line hover:ring-ring data-[state=open]:ring-ring">
                   <span className={cn('truncate', defaults[p.id] ? 'text-fg' : 'text-fg-3')}>{defaults[p.id] || 'Harness default'}</span>
                   <ChevronDown className="size-3 shrink-0 text-fg-3" />
                 </button>

@@ -57,7 +57,7 @@ export function PositionsTabs({ className }: { className?: string }) {
               <span className={tone(-p.funding)}>{fmtUsd(-p.funding)}</span>,
               <ConfirmButton
                 disabled={acct.readOnly}
-                className="rounded-md bg-chip px-2 py-0.5 text-fg hover:bg-[#35353a] disabled:opacity-40"
+                className="rounded-md bg-chip px-2 py-0.5 text-fg hover:bg-chip-hover disabled:opacity-40"
                 onConfirm={() => closePosition(p).then(() => toast.success(`Closed ${sym(p.coin)}`), (e) => toast.error('Close failed', { description: String(e?.message ?? e) }))}
               >
                 Close
@@ -76,7 +76,7 @@ export function PositionsTabs({ className }: { className?: string }) {
               fmtPx(o.limitPx),
               o.origSz,
               o.origSz - o.sz,
-              <button className="rounded-md bg-chip px-2 py-0.5 text-fg hover:bg-[#35353a]" onClick={() => void cancelOrder(o.coin, o.oid)}>
+              <button className="rounded-md bg-chip px-2 py-0.5 text-fg hover:bg-chip-hover" onClick={() => void cancelOrder(o.coin, o.oid)}>
                 Cancel
               </button>,
             ])}

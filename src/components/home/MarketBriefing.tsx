@@ -40,7 +40,7 @@ export function MarketBriefing() {
     <motion.button
       onClick={() => send('Give me a market briefing for today: what is moving across crypto, equities and commodities and why.', { surface: 'modal' })}
       whileTap={{ scale: 0.995 }}
-      className="group flex w-[262px] shrink-0 flex-col rounded-[12px] bg-raised p-3 text-left transition-colors duration-150 hover:bg-[#24252a]"
+      className="group flex w-[262px] shrink-0 flex-col rounded-[12px] bg-raised p-3 text-left transition-colors duration-150 hover:bg-hover"
     >
       <span className="flex items-center gap-1.5 text-[12.5px] font-medium text-brand">
         <Sparkles className="size-3.5" />
