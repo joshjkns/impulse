@@ -33,6 +33,13 @@ const DEFAULT_SCANS: Scan[] = [
   { id: 'movers', name: 'Big movers', minVolume: 5e6, sort: { key: 'changePct', dir: 'desc' } },
 ]
 
+export interface WatchedAccount {
+  address: `0x${string}`
+  label: string
+}
+
+export type MarginMode = 'isolated' | 'cross'
+
 interface PrefsState {
   favorites: string[]
   scans: Scan[]
@@ -42,6 +49,24 @@ interface PrefsState {
   harness: string
   harnessModel: string
   ntfyTopic: string
+  /* trading defaults */
+  defaultLeverage: number
+  defaultMarginMode: MarginMode
+  defaultOrderType: 'market' | 'limit'
+  /** Max slippage for market orders, in percent. */
+  maxSlippagePct: number
+  /** Require a second press on Place / Close before an order is sent. */
+  confirmOrders: boolean
+  /* display */
+  priceFlash: boolean
+  clock24h: boolean
+  footerTicker: boolean
+  reduceMotion: boolean
+  /* notifications */
+  alertPopups: boolean
+  alertSound: boolean
+  /* accounts */
+  watched: WatchedAccount[]
   toggleFavorite: (coin: string) => void
   addScan: (s: Scan) => void
   removeScan: (id: string) => void
@@ -59,6 +84,18 @@ export const usePrefs = create<PrefsState>()(
       harness: 'claude',
       harnessModel: '',
       ntfyTopic: '',
+      defaultLeverage: 6,
+      defaultMarginMode: 'isolated',
+      defaultOrderType: 'market',
+      maxSlippagePct: 8,
+      confirmOrders: false,
+      priceFlash: true,
+      clock24h: false,
+      footerTicker: true,
+      reduceMotion: false,
+      alertPopups: true,
+      alertSound: false,
+      watched: [],
       toggleFavorite: (coin) => {
         const f = get().favorites
         set({ favorites: f.includes(coin) ? f.filter((c) => c !== coin) : [...f, coin] })

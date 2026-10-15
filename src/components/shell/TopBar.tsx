@@ -1,7 +1,10 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { Eye, X } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router'
 import { LogoMark } from '@/components/brand/Logo'
 import { Kbd } from '@/components/common'
+import { shortAddr } from '@/lib/format'
+import { usePrefs } from '@/store/prefs'
 import { useUI } from '@/store/ui'
 import { cn } from '@/lib/utils'
 
@@ -41,9 +44,30 @@ export function TopBar() {
           Search or do anything...
           <Kbd>/</Kbd>
         </button>
+        <WatchingChip />
         <AccountButton />
       </div>
     </header>
+  )
+}
+
+/** Shown while a watched account replaces the connected wallet. */
+function WatchingChip() {
+  const watching = useUI((s) => s.watching)
+  const watch = useUI((s) => s.watch)
+  const openSettings = useUI((s) => s.openSettings)
+  const label = usePrefs((s) => s.watched.find((w) => w.address.toLowerCase() === watching?.toLowerCase())?.label)
+  if (!watching) return null
+  return (
+    <div className="flex h-[30px] items-center rounded-[9px] bg-brand-soft text-[12px] text-brand">
+      <button onClick={() => openSettings(true, 'accounts')} className="flex items-center gap-1.5 pr-1 pl-2.5" title="Read-only. Manage accounts">
+        <Eye className="size-3.5" />
+        <span className="max-w-[140px] truncate">{label ?? shortAddr(watching)}</span>
+      </button>
+      <button onClick={() => watch(undefined)} className="grid h-full w-7 place-items-center rounded-r-[9px] hover:bg-white/5" aria-label="Stop watching">
+        <X className="size-3.5" />
+      </button>
+    </div>
   )
 }
 

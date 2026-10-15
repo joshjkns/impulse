@@ -4,6 +4,7 @@ import type { WalletClient } from 'viem'
 import { create } from 'zustand'
 import { DEXES, httpTransport, info } from '@/lib/hl'
 import { useMarkets, type Market } from '@/store/markets'
+import { usePrefs } from '@/store/prefs'
 
 export interface Position {
   coin: string
@@ -54,6 +55,8 @@ export interface FundingPayment {
 
 interface AccountState {
   address?: `0x${string}`
+  /** True when viewing a watched address instead of the connected wallet: no trading. */
+  readOnly: boolean
   agentKey?: `0x${string}`
   portfolioValue: number
   pnl24h: number
@@ -68,7 +71,7 @@ interface AccountState {
   funding: FundingPayment[]
   /** Per-coin leverage preferences chosen in the ticket. */
   leverage: Record<string, { value: number; isolated: boolean }>
-  setAddress: (a?: `0x${string}`) => void
+  setAddress: (a?: `0x${string}`, readOnly?: boolean) => void
   refresh: () => Promise<void>
   setLeverage: (coin: string, value: number, isolated: boolean) => void
 }
@@ -97,17 +100,25 @@ export const useAccount = create<AccountState>((set, get) => ({
   historicalOrders: [],
   funding: [],
   leverage: {},
-  setAddress(address) {
-    if (address === get().address) return
+  readOnly: false,
+  setAddress(address, readOnly = false) {
+    if (address === get().address && readOnly === get().readOnly) return
     clearInterval(poll)
     set({
       address,
-      agentKey: address ? ((safeGet(agentStorageKey(address)) as `0x${string}` | null) ?? undefined) : undefined,
+      readOnly,
+      agentKey: address && !readOnly ? ((safeGet(agentStorageKey(address)) as `0x${string}` | null) ?? undefined) : undefined,
       positions: [],
       openOrders: [],
       fills: [],
+      historicalOrders: [],
+      funding: [],
       portfolioValue: 0,
       pnl24h: 0,
+      unrealizedPnl: 0,
+      maintenanceMargin: 0,
+      totalNtl: 0,
+      withdrawable: 0,
     })
     if (address) {
       void get().refresh()
@@ -207,8 +218,9 @@ export const useAccount = create<AccountState>((set, get) => ({
  * the wallet *can* sign on Arbitrum) and sign orders with that key afterwards.
  */
 export async function enableTrading(wallet: WalletClient) {
-  const user = useAccount.getState().address
+  const { address: user, readOnly } = useAccount.getState()
   if (!user) throw new Error('Connect a wallet first')
+  if (readOnly) throw new Error('Viewing a watched account. Switch back to your wallet to trade.')
   const key = generatePrivateKey()
   const agent = privateKeyToAccount(key)
   const exchange = new ExchangeClient({ transport: httpTransport, wallet: wallet as never })
@@ -223,8 +235,21 @@ export async function enableTrading(wallet: WalletClient) {
   useAccount.setState({ agentKey: key })
 }
 
+/** Forget the locally stored trading key. The approval stays on Hyperliquid until replaced or it expires. */
+export function forgetTradingKey() {
+  const { address } = useAccount.getState()
+  if (!address) return
+  try {
+    localStorage.removeItem(agentStorageKey(address))
+  } catch {
+    /* ignore */
+  }
+  useAccount.setState({ agentKey: undefined })
+}
+
 function agentExchange() {
-  const { agentKey } = useAccount.getState()
+  const { agentKey, readOnly } = useAccount.getState()
+  if (readOnly) throw new Error('Viewing a watched account. Switch back to your wallet to trade.')
   if (!agentKey) throw new Error('Enable trading first')
   return new ExchangeClient({ transport: httpTransport, wallet: privateKeyToAccount(agentKey) })
 }
@@ -260,7 +285,7 @@ export async function placeOrder(o: OrderIntent) {
   const ex = agentExchange()
   await ex.updateLeverage({ asset: m.assetId, isCross: !o.isolated, leverage: o.leverage })
   const ref = o.type === 'limit' && o.limitPx ? o.limitPx : m.midPx || m.markPx
-  const slip = o.slippage ?? 0.08
+  const slip = o.slippage ?? usePrefs.getState().maxSlippagePct / 100
   const px = o.type === 'market' ? ref * (o.isBuy ? 1 + slip : 1 - slip) : ref
   const sz = roundSz(o.usd / ref, m)
   if (+sz <= 0) throw new Error('Size too small')
@@ -307,8 +332,9 @@ export async function closePosition(p: Position) {
 }
 
 export async function withdraw(wallet: WalletClient, amount: number) {
-  const user = useAccount.getState().address
+  const { address: user, readOnly } = useAccount.getState()
   if (!user) throw new Error('Connect a wallet first')
+  if (readOnly) throw new Error('Viewing a watched account. Switch back to your wallet to withdraw.')
   const exchange = new ExchangeClient({ transport: httpTransport, wallet: wallet as never })
   await exchange.withdraw3({ destination: user, amount: amount.toFixed(2) })
   void useAccount.getState().refresh()

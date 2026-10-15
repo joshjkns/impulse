@@ -49,7 +49,7 @@ function Row({ k, v, plain }: { k: string; v: React.ReactNode; plain?: boolean }
   )
 }
 
-function TransferDialog({ mode, onClose }: { mode: 'deposit' | 'withdraw' | null; onClose: () => void }) {
+export function TransferDialog({ mode, onClose }: { mode: 'deposit' | 'withdraw' | null; onClose: () => void }) {
   const [amount, setAmount] = useState('')
   const [busy, setBusy] = useState(false)
   const { address, chainId } = useWagmiAccount()

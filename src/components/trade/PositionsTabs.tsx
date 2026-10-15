@@ -2,8 +2,8 @@ import { GripVertical } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { CoinIcon } from '@/components/common'
-import { fmtPct, fmtPx, fmtUsd, tone } from '@/lib/format'
+import { CoinIcon, ConfirmButton } from '@/components/common'
+import { fmtDateTime, fmtPct, fmtPx, fmtUsd, tone } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { cancelOrder, closePosition, useAccount } from '@/store/account'
 import { useMarkets } from '@/store/markets'
@@ -52,12 +52,13 @@ export function PositionsTabs({ className }: { className?: string }) {
               p.liquidationPx ? fmtPx(p.liquidationPx) : '—',
               `${fmtUsd(p.marginUsed)} ${p.isolated ? '(Isolated)' : '(Cross)'}`,
               <span className={tone(-p.funding)}>{fmtUsd(-p.funding)}</span>,
-              <button
-                className="rounded-md bg-chip px-2 py-0.5 text-fg hover:bg-[#35353a]"
-                onClick={() => closePosition(p).then(() => toast.success(`Closed ${sym(p.coin)}`), (e) => toast.error('Close failed', { description: String(e?.message ?? e) }))}
+              <ConfirmButton
+                disabled={acct.readOnly}
+                className="rounded-md bg-chip px-2 py-0.5 text-fg hover:bg-[#35353a] disabled:opacity-40"
+                onConfirm={() => closePosition(p).then(() => toast.success(`Closed ${sym(p.coin)}`), (e) => toast.error('Close failed', { description: String(e?.message ?? e) }))}
               >
                 Close
-              </button>,
+              </ConfirmButton>,
             ])}
             empty="No open positions"
           />
@@ -65,7 +66,7 @@ export function PositionsTabs({ className }: { className?: string }) {
           <Table
             cols={['Time', 'Market', 'Type', 'Side', 'Price', 'Size', 'Filled', '']}
             rows={acct.openOrders.map((o) => [
-              new Date(o.timestamp).toLocaleString(),
+              fmtDateTime(o.timestamp, { second: '2-digit' }),
               sym(o.coin),
               o.orderType,
               <span className={o.side === 'B' ? 'text-up' : 'text-down'}>{o.side === 'B' ? 'Long' : 'Short'}</span>,
@@ -82,7 +83,7 @@ export function PositionsTabs({ className }: { className?: string }) {
           <Table
             cols={['Time', 'Market', 'Direction', 'Price', 'Size', 'Value', 'Fee', 'Closed PNL']}
             rows={acct.fills.map((f) => [
-              new Date(f.time).toLocaleString(),
+              fmtDateTime(f.time, { second: '2-digit' }),
               sym(f.coin),
               <span className={f.side === 'B' ? 'text-up' : 'text-down'}>{f.dir}</span>,
               fmtPx(f.px),
@@ -97,7 +98,7 @@ export function PositionsTabs({ className }: { className?: string }) {
           <Table
             cols={['Time', 'Market', 'Type', 'Side', 'Price', 'Size']}
             rows={acct.historicalOrders.map((o) => [
-              new Date(o.timestamp).toLocaleString(),
+              fmtDateTime(o.timestamp, { second: '2-digit' }),
               sym(o.coin),
               o.orderType,
               <span className={o.side === 'B' ? 'text-up' : 'text-down'}>{o.side === 'B' ? 'Long' : 'Short'}</span>,
@@ -110,7 +111,7 @@ export function PositionsTabs({ className }: { className?: string }) {
           <Table
             cols={['Time', 'Market', 'Size', 'Payment', 'Rate']}
             rows={acct.funding.map((f) => [
-              new Date(f.time).toLocaleString(),
+              fmtDateTime(f.time, { second: '2-digit' }),
               sym(f.coin),
               f.szi,
               <span className={tone(f.usdc)}>{fmtUsd(f.usdc, 4)}</span>,
