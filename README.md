@@ -56,6 +56,7 @@ VITE_WALLETCONNECT_PROJECT_ID=…   # enables WalletConnect / mobile wallets (ex
 
 - **Custom workspaces** sit on a 24 × 24 grid that fills the screen. Drag a widget by its header; drop it on another widget to swap the two, or on open space to place it there. Resize from any edge or corner. Widgets that share an edge resize together, like split panes, and stop at each other's minimum size. Save ▸ Tidy layout goes back to even auto-tiling.
 - **Market tabs** (chart · order book · ticket · positions) have draggable splits. The sizes are shared by every market tab.
+- **The Impulse chat** floats as a window you can drag by its header and resize from any edge or corner (double-click the header to reset). On a workspace, drop it on the right edge to dock it; the docked panel resizes from its left edge, and dragging its header out floats it again. Position and sizes are remembered.
 
 ## The bridge
 
@@ -67,6 +68,7 @@ browser ──ws──▶ bridge ──spawn──▶ your harness (claude -p, c
                   └──── POST /call ◀── impulse MCP server (bridge/mcp.ts)
 ```
 
+- The picker under the chat box shows the provider (harness) and model each chat runs on; switch either per chat, search the suggested models, or type any model id. Settings ▸ AI agent sets a default model per provider (used when a chat is on *Default*). The model goes to the harness's own model flag (`$IMPULSE_MODEL` for a custom command); suggestions come from `bridge/harnesses.ts`, plus `opencode models` when OpenCode is installed.
 - Each chat message spawns the selected harness in a run folder with the Impulse MCP server configured for it. Harnesses without MCP (pi, Droid, custom) get a shell CLI instead: `node bridge/cli.ts <tool> '<json>'`.
 - Tool calls stream back as the "Working · N steps" list. Data tools run in the bridge; UI tools (create workspace, add widget, create scan, propose order, read portfolio) run in the tab that sent the message.
 - **Alerts** (price, 24h change, funding, open interest, smart money, news) live in the bridge, so they keep running with the tab closed. Hits go to the app, macOS notifications, and your phone via an [ntfy](https://ntfy.sh) topic set in Settings.

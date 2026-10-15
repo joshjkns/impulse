@@ -48,6 +48,12 @@ export interface Harness {
   /** Harness keeps its own conversation state between runs (so we don't resend history). */
   sessions: boolean
   homepage: string
+  /** Harness accepts a model flag. When false the picker only offers the harness's own default. */
+  modelFlag: boolean
+  /** Suggested model ids for the picker. Any other id can still be typed in. */
+  models: string[]
+  /** Command (args to `bin`) that prints one model id per line, merged into `models` on detect. */
+  listModels?: string[]
   launch: (c: RunContext) => Launch
 }
 
@@ -66,6 +72,8 @@ export const HARNESSES: Harness[] = [
     mcp: true,
     sessions: true,
     homepage: 'https://claude.com/claude-code',
+    modelFlag: true,
+    models: ['opus', 'sonnet', 'haiku', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-fable-5-1'],
     launch: (c) => ({
       parser: 'claude',
       args: [
@@ -101,6 +109,8 @@ export const HARNESSES: Harness[] = [
     mcp: true,
     sessions: true,
     homepage: 'https://github.com/openai/codex',
+    modelFlag: true,
+    models: ['gpt-5-codex', 'gpt-5', 'gpt-5-mini'],
     launch: (c) => {
       const cfg = [
         `mcp_servers.impulse.command=${toml(c.mcp.command)}`,
@@ -122,6 +132,8 @@ export const HARNESSES: Harness[] = [
     mcp: true,
     sessions: false,
     homepage: 'https://x.ai/cli',
+    modelFlag: true,
+    models: ['grok-code-fast-1', 'grok-4'],
     launch: (c) => ({
       // Grok's stream-json mirrors Claude Code's (assistant messages + stream_event partials).
       parser: 'claude',
@@ -146,6 +158,8 @@ export const HARNESSES: Harness[] = [
     mcp: true,
     sessions: false,
     homepage: 'https://github.com/google-gemini/gemini-cli',
+    modelFlag: true,
+    models: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'],
     launch: (c) => ({
       parser: 'gemini',
       files: { '.gemini/settings.json': mcpJson(c) },
@@ -159,6 +173,8 @@ export const HARNESSES: Harness[] = [
     mcp: false,
     sessions: true,
     homepage: 'https://github.com/badlogic/pi-mono',
+    modelFlag: true,
+    models: [],
     launch: (c) => {
       const session = c.session ?? crypto.randomUUID()
       return {
@@ -175,6 +191,8 @@ export const HARNESSES: Harness[] = [
     mcp: false,
     sessions: false,
     homepage: 'https://github.com/can1357/oh-my-pi',
+    modelFlag: true,
+    models: [],
     launch: (c) => ({
       parser: 'text',
       files: { '.mcp.json': mcpJson(c) },
@@ -188,6 +206,9 @@ export const HARNESSES: Harness[] = [
     mcp: true,
     sessions: true,
     homepage: 'https://opencode.ai',
+    modelFlag: true,
+    models: ['anthropic/claude-sonnet-5-5', 'openai/gpt-5'],
+    listModels: ['models'],
     launch: (c) => ({
       parser: 'opencode',
       files: {
@@ -212,6 +233,8 @@ export const HARNESSES: Harness[] = [
     mcp: true,
     sessions: true,
     homepage: 'https://cursor.com/cli',
+    modelFlag: true,
+    models: ['auto', 'gpt-5', 'sonnet-4.5'],
     launch: (c) => ({
       parser: 'cursor',
       files: { '.cursor/mcp.json': mcpJson(c) },
@@ -225,6 +248,8 @@ export const HARNESSES: Harness[] = [
     mcp: true,
     sessions: false,
     homepage: 'https://ampcode.com',
+    modelFlag: false,
+    models: [],
     launch: (c) => ({
       parser: 'text',
       files: { 'amp.settings.json': JSON.stringify({ 'amp.mcpServers': { impulse: { command: c.mcp.command, args: c.mcp.args, env: c.mcp.env } } }, null, 2) },
@@ -238,6 +263,8 @@ export const HARNESSES: Harness[] = [
     mcp: true,
     sessions: false,
     homepage: 'https://github.com/QwenLM/qwen-code',
+    modelFlag: true,
+    models: ['qwen3-coder-plus'],
     launch: (c) => ({
       parser: 'text',
       files: { '.qwen/settings.json': mcpJson(c) },
@@ -251,7 +278,9 @@ export const HARNESSES: Harness[] = [
     mcp: false,
     sessions: false,
     homepage: 'https://factory.ai',
-    launch: (c) => ({ parser: 'text', args: ['exec', '--auto', 'low', withCli(c)] }),
+    modelFlag: true,
+    models: [],
+    launch: (c) => ({ parser: 'text', args: ['exec', '--auto', 'low', ...(c.model ? ['-m', c.model] : []), withCli(c)] }),
   },
 ]
 
@@ -288,21 +317,35 @@ export interface HarnessStatus {
   path?: string
   mcp: boolean
   homepage: string
+  modelFlag: boolean
+  models: string[]
+}
+
+const run = (bin: string, args: string[], timeout: number) =>
+  new Promise<string>((resolve) =>
+    execFile(bin, args, { timeout, env: { ...process.env, PATH: searchPath() } }, (_err, stdout) => resolve(String(stdout ?? ''))),
+  )
+
+/** Model ids a harness reports itself (e.g. `opencode models`), one per line. */
+async function discoverModels(bin: string, h: Harness) {
+  if (!h.listModels) return []
+  const out = await run(bin, h.listModels, 8000)
+  return out
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => /^[\w./:@[\]-]+$/.test(l))
+    .slice(0, 200)
 }
 
 export async function detectHarnesses(): Promise<HarnessStatus[]> {
   return Promise.all(
-    HARNESSES.map(
-      (h) =>
-        new Promise<HarnessStatus>((resolve) => {
-          const p = which(h.bin)
-          const base = { id: h.id, name: h.name, mcp: h.mcp, homepage: h.homepage }
-          if (!p) return resolve({ ...base, installed: false })
-          execFile(p, ['--version'], { timeout: 6000, env: { ...process.env, PATH: searchPath() } }, (_err, stdout) => {
-            const version = String(stdout).trim().split('\n')[0]?.slice(0, 60)
-            resolve({ ...base, installed: true, version: version || undefined, path: p })
-          })
-        }),
-    ),
+    HARNESSES.map(async (h): Promise<HarnessStatus> => {
+      const p = which(h.bin)
+      const base = { id: h.id, name: h.name, mcp: h.mcp, homepage: h.homepage, modelFlag: h.modelFlag, models: h.models }
+      if (!p) return { ...base, installed: false }
+      const [out, found] = await Promise.all([run(p, ['--version'], 6000), discoverModels(p, h)])
+      const version = out.trim().split('\n')[0]?.slice(0, 60)
+      return { ...base, installed: true, version: version || undefined, path: p, models: Array.from(new Set([...h.models, ...found])) }
+    }),
   )
 }

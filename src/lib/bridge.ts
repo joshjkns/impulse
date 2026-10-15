@@ -14,6 +14,10 @@ export interface HarnessStatus {
   version?: string
   mcp: boolean
   homepage: string
+  /** Harness accepts a model flag (older bridges omit this: assume yes). */
+  modelFlag?: boolean
+  /** Suggested and discovered model ids. */
+  models?: string[]
 }
 
 export interface BridgeAlert {

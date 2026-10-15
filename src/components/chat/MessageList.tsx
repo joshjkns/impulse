@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import type { Message, Step, Thread } from '@/store/chat'
 import { Bubble, TypingBubble } from './Bubble'
 import { fmtClock } from '@/lib/format'
+import { useProviderName } from './ModelPicker'
 import { RichText } from './RichText'
 
 const ALERT_ICON = { bell: Bell, globe: Globe, chart: LineChart, bolt: Zap }
@@ -31,7 +32,7 @@ export function MessageList({ thread, compact }: { thread?: Thread; compact?: bo
       <div className="mx-auto flex max-w-[640px] flex-col gap-2 pb-3">
         <div className="mb-1 text-center text-[11px] text-fg-3">{dayLabel(thread.messages[0].createdAt)}</div>
         {thread.messages.map((m, i) => (
-          <MessageView key={m.id} m={m} prev={thread.messages[i - 1]} />
+          <MessageView key={m.id} m={m} prev={thread.messages[i - 1]} showModel={m.role === 'assistant' && !!m.harness && changedModel(thread.messages, i)} />
         ))}
         <div ref={end} />
       </div>
@@ -39,7 +40,27 @@ export function MessageList({ thread, compact }: { thread?: Thread; compact?: bo
   )
 }
 
-function MessageView({ m, prev }: { m: Message; prev?: Message }) {
+/** True when reply `i` ran on a different provider/model than the reply before it (or is the first). */
+function changedModel(messages: Message[], i: number) {
+  for (let k = i - 1; k >= 0; k--) {
+    const p = messages[k]
+    if (p.role === 'assistant' && p.harness) return p.harness !== messages[i].harness || p.model !== messages[i].model
+  }
+  return true
+}
+
+function ModelCaption({ m }: { m: Message }) {
+  const name = useProviderName()
+  return (
+    <div className="mr-auto flex items-center gap-1 text-[10.5px] text-fg-3">
+      <span>{name(m.harness!)}</span>
+      <span>·</span>
+      <span>{m.model || 'default model'}</span>
+    </div>
+  )
+}
+
+function MessageView({ m, prev, showModel }: { m: Message; prev?: Message; showModel?: boolean }) {
   if (m.role === 'user')
     return (
       <div className={cn(prev?.role === 'user' ? 'mt-0' : 'mt-1')}>
@@ -50,6 +71,7 @@ function MessageView({ m, prev }: { m: Message; prev?: Message }) {
   const working = m.status === 'working'
   return (
     <div className="flex flex-col gap-1.5">
+      {showModel && <ModelCaption m={m} />}
       {(m.steps.length > 0 || working) && <StepsLine m={m} />}
       <AnimatePresence initial={false}>{working && !m.text && <TypingBubble key="typing" />}</AnimatePresence>
       {(m.text || alerts.length > 0) && (
