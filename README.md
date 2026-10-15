@@ -146,7 +146,7 @@ Impulse is meant to be forked. Some good places to start:
 | Add a widget | `src/components/widgets/` and `registry.tsx`, plus `WIDGET_META` in `src/store/workspaces.ts` |
 | Give the agent a new tool | `bridge/tools.ts` (data tools) and `src/lib/uiTools.ts` (tools that act on the UI) |
 | Support another agent CLI | `bridge/harnesses.ts` |
-| Add an alert type | `bridge/` (alerts run in the bridge so they survive a closed tab) |
+| Add an alert type | `bridge/alerts.ts` (alerts run in the bridge so they survive a closed tab) |
 | Re-shoot the README screenshots | `node scripts/readme-shots.mjs` (mocked market data, no network needed) |
 
 If you build something cool on a fork, feel free to open an issue to show it off. A reply may take a while, though.
