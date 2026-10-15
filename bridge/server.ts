@@ -55,6 +55,9 @@ const briefingFile = path.join(DATA_DIR, 'briefing.json')
 let settings: { ntfyTopic?: string; customCommand?: string } = existsSync(settingsFile) ? JSON.parse(readFileSync(settingsFile, 'utf8')) : {}
 let briefing: unknown = existsSync(briefingFile) ? JSON.parse(readFileSync(briefingFile, 'utf8')) : null
 
+const feedFile = path.join(DATA_DIR, 'feed.json')
+let feed: { id: string; title: string; body: string; at: number; alertId: string; coin?: string }[] = existsSync(feedFile) ? JSON.parse(readFileSync(feedFile, 'utf8')) : []
+
 const alerts = new AlertEngine(DATA_DIR)
 alerts.ntfyTopic = settings.ntfyTopic ?? ''
 
@@ -79,6 +82,8 @@ const send = (ws: WebSocket, msg: unknown) => ws.readyState === ws.OPEN && ws.se
 const broadcast = (msg: unknown) => clients.forEach((c) => send(c, msg))
 
 alerts.onFire((f) => {
+  feed = [{ id: `${f.alert.id}.${f.at}`, title: f.title, body: f.body, at: f.at, alertId: f.alert.id, coin: f.alert.coin }, ...feed].slice(0, 200)
+  writeFileSync(feedFile, JSON.stringify(feed))
   broadcast({ type: 'alert_fired', alert: f.alert, title: f.title, body: f.body, at: f.at })
   if (!clients.size) alerts.desktopNotify(f.title, f.body)
 })
@@ -369,7 +374,7 @@ const wss = new WebSocketServer({ server, path: '/ws', verifyClient: ({ origin }
 
 wss.on('connection', (ws) => {
   clients.add(ws)
-  send(ws, { type: 'hello', harnesses, alerts: alerts.list(), smartMoney: smartMoney(), briefing, settings: { ntfyTopic: settings.ntfyTopic ?? '', customCommand: settings.customCommand ?? '' } })
+  send(ws, { type: 'hello', harnesses, feed, alerts: alerts.list(), smartMoney: smartMoney(), briefing, settings: { ntfyTopic: settings.ntfyTopic ?? '', customCommand: settings.customCommand ?? '' } })
   ws.on('close', () => clients.delete(ws))
   ws.on('message', async (raw) => {
     let msg: Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any

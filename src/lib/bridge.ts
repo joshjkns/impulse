@@ -101,6 +101,12 @@ function handle(msg: Msg) {
         briefing: msg.briefing ?? undefined,
         settings: msg.settings,
       })
+      // Merge the bridge's alert history (fired while this tab was closed or elsewhere).
+      if (Array.isArray(msg.feed)) {
+        const have = new Set(useBridgeStore.getState().feed.map((f) => f.id))
+        ;(msg.feed as FeedItem[]).filter((f) => !have.has(f.id)).forEach(pushFeed)
+        useBridgeStore.setState({ feed: [...useBridgeStore.getState().feed].sort((a, b) => b.at - a.at) })
+      }
       break
     case 'harnesses':
       useBridgeStore.setState({ harnesses: msg.harnesses })
