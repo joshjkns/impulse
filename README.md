@@ -1,15 +1,56 @@
+<div align="center">
+
+<img src="build/icon.svg" width="96" alt="Impulse logo" />
+
 # Impulse
 
-An AI trading terminal for Hyperliquid: crypto perps and HIP-3 markets (equities, indices, commodities, FX), with an agent that builds live workspaces, watches the market and drafts trades. The agent is **your own** local coding harness — Claude Code, Codex, Grok, Gemini CLI, pi, oh-my-pi, OpenCode, Cursor CLI, Amp, Qwen Code, Factory Droid, or any custom command.
+**An AI trading terminal for Hyperliquid, driven by the coding agent you already use.**
 
-## Run it
+Crypto perps and HIP-3 markets (equities, indices, commodities, FX) in one terminal. Ask in plain English and it builds live workspaces, watches the market for you, and drafts trades you approve with one click.
+
+![React](https://img.shields.io/badge/React_19-20232a?logo=react&logoColor=61dafb)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?logo=typescript&logoColor=white)
+![Electron](https://img.shields.io/badge/Electron-2b2e3a?logo=electron&logoColor=9feaf9)
+![Hyperliquid](https://img.shields.io/badge/Hyperliquid-perps_%2B_HIP--3-97fce4)
+![MCP](https://img.shields.io/badge/MCP-tools-8b6cf6)
+
+</div>
+
+> [!IMPORTANT]
+> **This is a side project, and maintenance is light.** Issues and PRs may sit for a while or not get answered. If you want to build on Impulse, **fork it and make it your own**. That's the intended way to use this repo. See [Make it yours](#make-it-yours).
+
+![Impulse workspace: live chart, order book heatmap, volume profile and funding](docs/workspace.png)
+
+## Why Impulse
+
+- **Bring your own AI.** No API keys or subscriptions in the app. Impulse drives the agent you already have installed: Claude Code, Codex, Grok, Gemini CLI, OpenCode, Cursor CLI, Amp, Qwen Code, Factory Droid, pi, oh-my-pi, or any custom command.
+- **Ask, and it builds.** "Show me BTC liquidity, funding and volume profile side by side" turns into a live workspace in seconds. Replies can include live charts, tickers and widgets.
+- **You stay in control.** The agent can only *propose* orders. It shows an editable ticket, and nothing executes until you press Place. Trading is non-custodial and signed in your browser.
+- **Alerts that keep running.** Price, 24h change, funding, open interest, smart-money flow and news alerts run in a local bridge, so they keep firing with the tab closed. They reach you in the app, as desktop notifications, and on your phone via [ntfy](https://ntfy.sh).
+- **More than crypto.** Hyperliquid's HIP-3 markets bring NVDA, the S&P 500, gold, crude and FX into the same terminal as BTC.
+- **A terminal that feels fast.** Incremental charts, a virtualised market table, drag-to-swap widget grids, a floating or docked chat, a command palette (<kbd>/</kbd> or <kbd>⌘K</kbd>), and five themes with accent colours.
+- **Web or desktop.** Run it in the browser, or as an Electron app that bundles everything.
+
+## A look around
+
+| Markets at a glance | Full trading layout |
+| --- | --- |
+| ![Home: market scans, movers and a market briefing](docs/home.png) | ![Market tab: chart, order book and order ticket](docs/market.png) |
+
+| Themes & accents |
+| --- |
+| ![Settings: Impulse, Midnight, Black, Graphite and Mocha themes](docs/themes.png) |
+
+## Quick start
 
 ```sh
 pnpm install
 pnpm dev          # web app (Vite) + local bridge
 ```
 
-Open the URL Vite prints. `pnpm web` and `pnpm bridge` run the two halves separately.
+Open the URL Vite prints, connect a wallet, and press **Ask Impulse**. `pnpm web` and `pnpm bridge` run the two halves separately.
+
+You'll need Node ≥ 22.18 and at least one supported agent CLI on your `PATH` for the AI features. Market data and trading work without one.
 
 ## Desktop app
 
@@ -37,7 +78,7 @@ Optional `.env.local`:
 VITE_WALLETCONNECT_PROJECT_ID=…   # enables WalletConnect / mobile wallets (extension wallets work without it)
 ```
 
-## What's inside
+## Built with
 
 | Area | Built on |
 | --- | --- |
@@ -90,6 +131,26 @@ claude mcp add impulse -- node "$(pwd)/bridge/mcp.ts"
 ## Dev scripts
 
 - `node scripts/shot.mjs <path> <out.png>` — screenshot a route
+- `node scripts/readme-shots.mjs` — regenerate the README screenshots in `docs/` against mocked market data (`CHROMIUM=<path>` to use a specific browser)
 - `node scripts/e2e-chat.mjs "<prompt>" <outDir> [path]` — drive a full chat run in a headless browser
 - `node scripts/harness-check.mjs claude grok opencode …` — confirm each harness can call Impulse tools
 - `node scripts/perf.mjs [seconds]` — renderer CPU per page against a mocked Hyperliquid feed (no network needed); run it against `pnpm build && pnpm preview --port 5180`. `DRAG=1` times a widget drag and resize, `PROFILE=n` lists the top n functions (build with `--sourcemap` for names), `TRACE=1` splits paint/commit/script, `LATENCY=ms` simulates network delay for the startup timing
+
+## Make it yours
+
+Impulse is meant to be forked. Some good places to start:
+
+| You want to… | Look at |
+| --- | --- |
+| Add a theme or accent | `src/lib/theme.ts` (each theme is a dozen colour tokens) |
+| Add a widget | `src/components/widgets/` and `registry.tsx`, plus `WIDGET_META` in `src/store/workspaces.ts` |
+| Give the agent a new tool | `bridge/tools.ts` (data tools) and `src/lib/uiTools.ts` (tools that act on the UI) |
+| Support another agent CLI | `bridge/harnesses.ts` |
+| Add an alert type | `bridge/` (alerts run in the bridge so they survive a closed tab) |
+| Re-shoot the README screenshots | `node scripts/readme-shots.mjs` (mocked market data, no network needed) |
+
+If you build something cool on a fork, feel free to open an issue to show it off. A reply may take a while, though.
+
+## Disclaimer
+
+Impulse is experimental software, not financial advice. Perpetual futures are leveraged and you can lose more than you expect, quickly. AI agents can be confidently wrong, so read every proposed order before you press Place. You use this at your own risk.
