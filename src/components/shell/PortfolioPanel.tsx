@@ -83,8 +83,10 @@ function RailButton({ active, children, onClick }: { active: boolean; children: 
 }
 
 function Portfolio() {
-  const { address, portfolioValue, pnl24h, positions } = useAccount()
-  const markets = useMarkets((s) => s.markets)
+  const { address, portfolioValue, pnl24h, positions } = useAccount(
+    useShallow((s) => ({ address: s.address, portfolioValue: s.portfolioValue, pnl24h: s.pnl24h, positions: s.positions })),
+  )
+  const markets = useMarkets((s) => s.meta)
   const { openConnectModal } = useConnectModal()
   const openMarket = useOpenMarket()
 

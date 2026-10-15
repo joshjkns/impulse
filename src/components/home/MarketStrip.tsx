@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useOpenMarket } from '@/components/shell/PortfolioPanel'
 import { LivePrice, Sparkline } from '@/components/common'
 import { fmtPct, fmtSigned, sigDecimals, tone } from '@/lib/format'
@@ -59,6 +59,7 @@ export function MarketStrip() {
 function Featured({ coin }: { coin: string }) {
   const m = useMarket(coin)
   const { data } = useCandles(coin, '15m', DAY, true)
+  const closes = useMemo(() => data.map((d) => d.c), [data])
   const open = useOpenMarket()
   return (
     <button onClick={() => open(coin)} className="group flex w-[230px] shrink-0 flex-col px-3 pt-3 text-left">
@@ -69,7 +70,7 @@ function Featured({ coin }: { coin: string }) {
           {fmtSigned(m?.change, sigDecimals(m?.markPx ?? 0))} ({fmtPct(m?.changePct, 2, false)})
         </span>
       </span>
-      <Sparkline values={data.map((d) => d.c)} baseline={m?.prevDayPx} up={(m?.change ?? 0) >= 0} className="mt-2 mb-3 min-h-0 w-full flex-1" />
+      <Sparkline values={closes} baseline={m?.prevDayPx} up={(m?.change ?? 0) >= 0} className="mt-2 mb-3 min-h-0 w-full flex-1" />
     </button>
   )
 }
@@ -77,10 +78,11 @@ function Featured({ coin }: { coin: string }) {
 function MiniTicker({ coin }: { coin: string }) {
   const m = useMarket(coin)
   const { data } = useCandles(coin, '15m', DAY, false)
+  const closes = useMemo(() => data.map((d) => d.c), [data])
   const open = useOpenMarket()
   return (
     <button onClick={() => open(coin)} className="flex min-w-0 items-center gap-2 rounded-lg px-2 text-left transition-colors duration-150 hover:bg-hover/60">
-      <Sparkline values={data.map((d) => d.c)} baseline={m?.prevDayPx} up={(m?.change ?? 0) >= 0} fill={false} className="h-7 w-10 shrink-0" />
+      <Sparkline values={closes} baseline={m?.prevDayPx} up={(m?.change ?? 0) >= 0} fill={false} className="h-7 w-10 shrink-0" />
       <span className="min-w-0">
         <span className="block truncate text-[11px] text-fg">{m?.name ?? coin}</span>
         <span className="flex items-baseline gap-1 truncate text-[12px]">

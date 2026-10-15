@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { deferredStorage } from '@/lib/storage'
 
 export interface AppNotification {
   id: string
@@ -79,6 +80,7 @@ export const useChatLayout = create<{
 }>()(
   persist((set) => ({ dockW: DOCK_DEFAULT, set: (p) => set(p) }), {
     name: 'impulse.chat.layout',
+    storage: deferredStorage(),
     partialize: (s) => ({ rect: s.rect, dockW: s.dockW }),
   }),
 )

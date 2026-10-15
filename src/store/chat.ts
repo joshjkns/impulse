@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { persist } from 'zustand/middleware'
+import { deferredStorage } from '@/lib/storage'
 import { bridgeSend, useBridgeStore } from '@/lib/bridge'
 import { useAccount } from '@/store/account'
 import { useMarkets } from '@/store/markets'
@@ -260,8 +261,19 @@ export const useChat = create<ChatState>()(
     },
     {
       name: 'impulse.chat',
-      storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ threads: s.threads.slice(0, 50), activeThread: s.activeThread }),
+      storage: deferredStorage(),
+      // Tool results can be large market-data payloads; only alert cards are rendered from them later.
+      partialize: (s) => ({
+        threads: s.threads.slice(0, 50).map((t) => ({
+          ...t,
+          messages: t.messages.map((m) =>
+            m.steps.some((x) => x.result !== undefined && x.name !== 'create_alert')
+              ? { ...m, steps: m.steps.map((x) => (x.name === 'create_alert' ? x : { ...x, result: undefined, args: undefined })) }
+              : m,
+          ),
+        })),
+        activeThread: s.activeThread,
+      }),
       onRehydrateStorage: () => (s) =>
         s?.threads.forEach((t) => t.messages.forEach((m) => m.status === 'working' && ((m.status = 'error'), (m.error = 'Interrupted')))),
     },

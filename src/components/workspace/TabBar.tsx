@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useTradeSlots } from '@/components/workspace/TradeLayout'
 import { cn } from '@/lib/utils'
-import { useMarket } from '@/store/markets'
+import { useMarketMeta, useMarketValue } from '@/store/markets'
 import { useUI } from '@/store/ui'
 import { WIDGET_META, useWorkspaces, type Tab, type WidgetKind } from '@/store/workspaces'
 
@@ -141,7 +141,7 @@ export function TabBar() {
 }
 
 function TabButton({ tab, active, onClick, onClose }: { tab: Tab; active: boolean; onClick: () => void; onClose: () => void }) {
-  const m = useMarket(tab.kind === 'market' ? tab.coin : undefined)
+  const m = useMarketMeta(tab.kind === 'market' ? tab.coin : undefined)
   return (
     <div
       onClick={onClick}
@@ -156,7 +156,7 @@ function TabButton({ tab, active, onClick, onClose }: { tab: Tab; active: boolea
         <>
           <CoinIcon coin={tab.coin} className="relative size-[14px] rounded-[4px]" />
           <span className="relative text-fg">{m?.symbol ?? tab.coin}</span>
-          <LivePrice value={m?.markPx ?? 0} className="relative truncate text-fg-2" />
+          <TabPrice coin={tab.coin} />
         </>
       ) : (
         <span className="relative truncate text-fg">
@@ -172,4 +172,13 @@ function TabButton({ tab, active, onClick, onClose }: { tab: Tab; active: boolea
       </button>
     </div>
   )
+}
+
+/**
+ * The live price lives in its own component: re-rendering TabButton on every tick would make the shared-layout
+ * highlight (`layoutId`) re-measure the tab strip each time.
+ */
+function TabPrice({ coin }: { coin: string }) {
+  const markPx = useMarketValue(coin, 'markPx')
+  return <LivePrice value={markPx ?? 0} className="relative truncate text-fg-2" />
 }

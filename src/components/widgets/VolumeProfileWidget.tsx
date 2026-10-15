@@ -2,7 +2,7 @@ import { LineSeries, type ISeriesApi } from 'lightweight-charts'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CHART_COLORS, PX_FORMAT, ts, useChart } from '@/components/charts/useChart'
 import { useCandles } from '@/lib/useCandles'
-import { useMarket } from '@/store/markets'
+import { useMarketMeta } from '@/store/markets'
 import type { WidgetProps } from './registry'
 import { LegendChip } from './WidgetFrame'
 
@@ -11,7 +11,7 @@ const BINS = 48
 
 /** Where the market traded over 30 days: hourly price plus a horizontal up/down volume histogram. */
 export function VolumeProfileWidget({ coin, onReady }: WidgetProps) {
-  const m = useMarket(coin)
+  const m = useMarketMeta(coin)
   const { ref, chart } = useChart({ rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.06, bottom: 0.06 } } })
   const { data } = useCandles(coin, '1h', MONTH)
   const series = useRef<ISeriesApi<'Line'>>(undefined)

@@ -22,18 +22,20 @@ const RANGES: { k: string; interval: CandleInterval; bars: number }[] = [
   { k: 'ALL', interval: '1d', bars: 1500 },
 ]
 
-function useCountdown() {
-  const [now, setNow] = useState(Date.now())
+/** Time to the next hourly funding payment. Its own component so the per-second tick re-renders only this text. */
+function Countdown() {
+  const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [])
-  return 3_600_000 - (now % 3_600_000)
+  return <>{fmtDuration(3_600_000 - (now % 3_600_000))}</>
 }
 
 export function ChartPanel({ coin }: { coin: string }) {
   const m = useMarket(coin)
-  const { favorites, toggleFavorite } = usePrefs()
+  const favorites = usePrefs((s) => s.favorites)
+  const toggleFavorite = usePrefs((s) => s.toggleFavorite)
   const [interval, setIv] = useState<CandleInterval>('15m')
   const [bars, setBars] = useState(300)
   const [range, setRange] = useState<string | null>(null)
@@ -42,7 +44,6 @@ export function ChartPanel({ coin }: { coin: string }) {
   const [log, setLog] = useState(false)
   const [pctScale, setPctScale] = useState(false)
   const [hover, setHover] = useState<{ o: number; h: number; l: number; c: number; v: number }>()
-  const countdown = useCountdown()
   const fav = favorites.includes(coin)
 
   return (
@@ -65,7 +66,10 @@ export function ChartPanel({ coin }: { coin: string }) {
           v={
             <span>
               <span className={tone(m?.funding)}>{fmtPct((m?.funding ?? 0) * 100, 4)}</span>
-              <span className="text-fg"> / {fmtDuration(countdown)}</span>
+              <span className="text-fg">
+                {' / '}
+                <Countdown />
+              </span>
             </span>
           }
         />

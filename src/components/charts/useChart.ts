@@ -64,3 +64,21 @@ export function useChart(options?: DeepPartial<ChartOptions>) {
   }, [])
   return { ref, chart }
 }
+
+/**
+ * How a new candle array relates to the last one pushed into a chart: unchanged, only the live (last) bar moved
+ * or one bar was appended, or anything else. Live ticks then cost one `series.update()` instead of a full
+ * `setData()` of the whole history, and the user's zoom/scroll survives them.
+ */
+export function diffBars(prev: { current?: readonly { t: number }[] }, data: readonly { t: number }[]): 'same' | 'tick' | 'reset' {
+  const p = prev.current
+  prev.current = data
+  if (p === data) return 'same'
+  if (!p?.length || !data.length || p[0].t !== data[0].t) return 'reset'
+  const grew = data.length - p.length
+  if (grew !== 0 && grew !== 1) return 'reset'
+  // Everything before the live bar must be the same bars as before.
+  const before = data.length - 2
+  if (before >= 0 && data[before].t !== p[grew === 0 ? before : p.length - 1].t) return 'reset'
+  return 'tick'
+}

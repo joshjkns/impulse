@@ -207,6 +207,10 @@
   }
 }
 
+/* LivePrice tick flash (set imperatively; unlayered so it wins over the text colour utility). */
+[data-flash='up'] { color: var(--up); }
+[data-flash='down'] { color: var(--down); }
+
 /* react-grid-layout overrides — matte placeholder, snappy reflow, edge + corner resize handles */
 .react-grid-layout {
   transition: height 200ms var(--ease-snap);

@@ -1,12 +1,12 @@
 import { ArrowLeftRight, ChevronDown } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { LogoPulse } from '@/components/brand/Logo'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { fmtPx } from '@/lib/format'
+import { dateFormat, fmtPx, numberFormat } from '@/lib/format'
 import { subs } from '@/lib/hl'
 import { cn } from '@/lib/utils'
-import { useMarket } from '@/store/markets'
+import { useMarketMeta } from '@/store/markets'
 import { CoinSwitcher } from './CoinSwitcher'
 import { PaneGrip } from './PaneGrip'
 
@@ -15,18 +15,35 @@ export interface Level {
   sz: number
 }
 
-/** Live L2 book over websocket, aggregated server-side to `nSigFigs`. */
+/** Book snapshots arrive several times a second; render at most this often. */
+const BOOK_MIN_MS = 100
+
+/** Live L2 book over websocket, aggregated server-side to `nSigFigs`. Bursts collapse into one render per frame. */
 export function useBook(coin: string, nSigFigs?: number) {
   const [book, setBook] = useState<{ bids: Level[]; asks: Level[] } | null>(null)
   useEffect(() => {
     let alive = true
     let unsub: (() => void) | undefined
+    let latest: { levels: { px: string; sz: string }[][] } | undefined
+    let frame = 0
+    let last = 0
     setBook(null)
+    const flush = () => {
+      frame = 0
+      if (!alive || !latest) return
+      const b = latest
+      latest = undefined
+      last = performance.now()
+      const map = (ls: { px: string; sz: string }[]) => ls.map((l) => ({ px: +l.px, sz: +l.sz }))
+      setBook({ bids: map(b.levels[0]), asks: map(b.levels[1]) })
+    }
     subs
       .l2Book({ coin, ...(nSigFigs && nSigFigs < 5 ? { nSigFigs: nSigFigs as 2 | 3 | 4 } : {}) }, (b) => {
         if (!alive) return
-        const map = (ls: { px: string; sz: string }[]) => ls.map((l) => ({ px: +l.px, sz: +l.sz }))
-        setBook({ bids: map(b.levels[0]), asks: map(b.levels[1]) })
+        latest = b
+        if (frame) return
+        const wait = BOOK_MIN_MS - (performance.now() - last)
+        frame = wait > 0 ? window.setTimeout(() => requestAnimationFrame(flush), wait) : requestAnimationFrame(flush)
       })
       .then((s) => (alive ? (unsub = () => void s.unsubscribe()) : void s.unsubscribe()))
       .catch(() => undefined)
@@ -46,21 +63,42 @@ export interface Trade {
   tid: number
 }
 
-export function useTrades(coin: string) {
+/** The tape re-renders at most this often; trades arriving in between are batched. */
+const TAPE_MIN_MS = 250
+
+/**
+ * Recent trades for `coin`. The tape is always collected (so it's populated when you switch to it), but the
+ * component only re-renders for new trades while `visible`, at most every TAPE_MIN_MS.
+ */
+export function useTrades(coin: string, visible = true) {
   const [trades, setTrades] = useState<Trade[]>([])
+  const buf = useRef<Trade[]>([])
+  const show = useRef(visible)
+  useEffect(() => {
+    show.current = visible
+    if (visible) setTrades(buf.current)
+  }, [visible])
   useEffect(() => {
     let alive = true
     let unsub: (() => void) | undefined
+    let frame = 0
+    buf.current = []
     setTrades([])
     subs
       .trades({ coin }, (ts) => {
         if (!alive) return
-        setTrades((prev) => [...ts.map((t) => ({ px: +t.px, sz: +t.sz, side: t.side, time: t.time, tid: t.tid })).reverse(), ...prev].slice(0, 80))
+        buf.current = [...ts.map((t) => ({ px: +t.px, sz: +t.sz, side: t.side, time: t.time, tid: t.tid })).reverse(), ...buf.current].slice(0, 80)
+        if (show.current && !frame)
+          frame = window.setTimeout(() => {
+            frame = 0
+            if (alive) setTrades(buf.current)
+          }, TAPE_MIN_MS)
       })
       .then((s) => (alive ? (unsub = () => void s.unsubscribe()) : void s.unsubscribe()))
       .catch(() => undefined)
     return () => {
       alive = false
+      clearTimeout(frame)
       unsub?.()
     }
   }, [coin])
@@ -68,15 +106,18 @@ export function useTrades(coin: string) {
 }
 
 const ROWS = 12
+const tradeTime = dateFormat({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
 
-export function Orderbook({ coin, className }: { coin: string; className?: string }) {
-  const m = useMarket(coin)
-  const [tab, setTab] = useState<'book' | 'trades'>('book')
+export function Orderbook({ coin, className, initialTab = 'book' }: { coin: string; className?: string; initialTab?: 'book' | 'trades' }) {
+  const m = useMarketMeta(coin)
+  const [tab, setTab] = useState<'book' | 'trades'>(initialTab)
   const [sig, setSig] = useState(5)
   const [usd, setUsd] = useState(false)
   const book = useBook(coin, sig)
-  const trades = useTrades(coin)
-  const mag = m?.markPx ? Math.floor(Math.log10(m.markPx)) + 1 : 1
+  const trades = useTrades(coin, tab === 'trades')
+  // Tick size follows the price's magnitude (read off the book, so live prices don't re-render this).
+  const top = book?.bids[0]?.px ?? book?.asks[0]?.px
+  const mag = top ? Math.floor(Math.log10(top)) + 1 : 1
   const tick = (n: number) => 10 ** (mag - n)
   const tickLabel = (n: number) => {
     const t = tick(n)
@@ -100,7 +141,8 @@ export function Orderbook({ coin, className }: { coin: string; className?: strin
   }, [book, usd])
 
   const unit = usd ? 'USD' : (m?.symbol ?? '')
-  const fmtSz = (v: number) => (usd ? Math.round(v).toLocaleString('en-US') : v.toLocaleString('en-US', { maximumFractionDigits: m?.szDecimals ?? 3, minimumFractionDigits: m?.szDecimals ?? 3 }))
+  const szFmt = usd ? numberFormat(0) : numberFormat(m?.szDecimals ?? 3)
+  const fmtSz = (v: number) => szFmt.format(usd ? Math.round(v) : v)
 
   return (
     <div className={cn('flex min-h-0 flex-col', className)}>
@@ -172,13 +214,9 @@ export function Orderbook({ coin, className }: { coin: string; className?: strin
                   ))}
                 </div>
                 <div className="m-2 mt-1 flex h-[20px] shrink-0 overflow-hidden rounded-[5px] text-[11px]">
-                  <motion.div
-                    className="flex items-center bg-up-soft pl-2 text-up"
-                    animate={{ width: `${view.bidPct}%` }}
-                    transition={{ duration: 0.3, ease: [0.2, 0.9, 0.1, 1] }}
-                  >
+                  <div className="flex items-center bg-up-soft pl-2 text-up" style={{ width: `${view.bidPct}%` }}>
                     <span className="num">{view.bidPct.toFixed(0)}%</span>
-                  </motion.div>
+                  </div>
                   <div className="flex flex-1 items-center justify-end bg-down-soft pr-2 text-down">
                     <span className="num">{(100 - view.bidPct).toFixed(0)}%</span>
                   </div>
@@ -195,23 +233,27 @@ export function Orderbook({ coin, className }: { coin: string; className?: strin
             <span className="text-right">Time</span>
           </div>
           {trades.map((t) => (
-            <motion.div
-              key={t.tid}
-              initial={{ backgroundColor: t.side === 'B' ? 'rgba(47,196,99,0.18)' : 'rgba(240,64,90,0.18)' }}
-              animate={{ backgroundColor: 'rgba(0,0,0,0)' }}
-              transition={{ duration: 0.6 }}
-              className="num grid grid-cols-3 py-[3px] text-[11.5px]"
-            >
-              <span className={t.side === 'B' ? 'text-up' : 'text-down'}>{fmtPx(t.px)}</span>
-              <span className="text-right text-fg">{t.sz}</span>
-              <span className="text-right text-fg-2">{new Date(t.time).toLocaleTimeString('en-US', { hour12: false })}</span>
-            </motion.div>
+            <TradeRow key={t.tid} t={t} />
           ))}
         </div>
       )}
     </div>
   )
 }
+
+/**
+ * Memoised so existing rows don't re-render as new trades arrive. No per-trade flash animation: on a busy
+ * market overlapping flashes kept the whole page repainting at 60fps.
+ */
+const TradeRow = memo(function TradeRow({ t }: { t: Trade }) {
+  return (
+    <div className="num grid grid-cols-3 py-[3px] text-[11.5px]">
+      <span className={t.side === 'B' ? 'text-up' : 'text-down'}>{fmtPx(t.px)}</span>
+      <span className="text-right text-fg">{t.sz}</span>
+      <span className="text-right text-fg-2">{tradeTime.format(t.time)}</span>
+    </div>
+  )
+})
 
 function BookRow({
   l,
@@ -230,9 +272,13 @@ function BookRow({
 }) {
   return (
     <div className="num relative grid h-[16.8px] grid-cols-3 items-center px-2 text-[11.5px]">
+      {/*
+        Depth bar: a transform (no layout) and deliberately no transition — 24 rows re-rendering several times a
+        second would otherwise fire hundreds of transition events per second through React's root listener.
+      */}
       <div
-        className={cn('absolute inset-y-[1px] left-0 transition-[width] duration-300 ease-out', side === 'bid' ? 'bg-up/[0.13]' : 'bg-down/[0.15]')}
-        style={{ width: `${(l.total / Math.max(1e-9, max)) * 100}%` }}
+        className={cn('absolute inset-y-[1px] left-0 w-full origin-left', side === 'bid' ? 'bg-up/[0.13]' : 'bg-down/[0.15]')}
+        style={{ transform: `scaleX(${Math.min(1, l.total / Math.max(1e-9, max))})` }}
       />
       <span className={cn('relative', side === 'bid' ? 'text-up' : 'text-down')}>{l.px.toFixed(dec)}</span>
       <span className="relative text-right text-fg">{fmtSz(usd ? l.px * l.sz : l.sz)}</span>
