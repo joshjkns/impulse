@@ -30,7 +30,10 @@ const PORT = Number(process.env.IMPULSE_BRIDGE_PORT ?? 7420)
 const HOST = '127.0.0.1'
 const URL_BASE = `http://${HOST}:${PORT}`
 const here = path.dirname(fileURLToPath(import.meta.url))
-const DATA_DIR = path.resolve(here, '..', '.impulse')
+/** The desktop app points this at its user-data folder; `pnpm bridge` keeps state in the repo. */
+const DATA_DIR = process.env.IMPULSE_DATA_DIR ? path.resolve(process.env.IMPULSE_DATA_DIR) : path.resolve(here, '..', '.impulse')
+/** Running inside the Electron app: its binary doubles as Node when ELECTRON_RUN_AS_NODE is set. */
+const IN_ELECTRON = !!process.versions.electron
 mkdirSync(DATA_DIR, { recursive: true })
 
 /* ------------------------------------------------------------------ state */
@@ -231,7 +234,7 @@ function startRun(req: ChatRequest, origin?: WebSocket) {
   // Outside any git repo, so harnesses treat the run folder (and the MCP config we drop there) as the project.
   const workdir = path.join(tmpdir(), 'impulse-runs', req.threadId.replace(/[^\w-]/g, ''))
   mkdirSync(workdir, { recursive: true })
-  const env = { IMPULSE_RUN: run.id, IMPULSE_BRIDGE_URL: URL_BASE }
+  const env: Record<string, string> = { IMPULSE_RUN: run.id, IMPULSE_BRIDGE_URL: URL_BASE, ...(IN_ELECTRON ? { ELECTRON_RUN_AS_NODE: '1' } : {}) }
   const mcpScript = path.join(here, 'mcp.ts')
   const cliScript = path.join(here, 'cli.ts')
 
@@ -244,7 +247,9 @@ function startRun(req: ChatRequest, origin?: WebSocket) {
     prompt: `${req.context ? `[Context: ${req.context}]\n\n` : ''}${transcript}${req.prompt}`,
     system: `${SYSTEM_PROMPT}\n- Notifications for alerts go to the Impulse app${settings.ntfyTopic ? ' and the user\'s phone (ntfy push is configured)' : ' and desktop (phone push is not configured; mention they can add an ntfy topic in Settings)'}.`,
     mcp: { command: process.execPath, args: [mcpScript], env },
-    cliHint: `node ${JSON.stringify(cliScript).slice(1, -1)}`,
+    cliHint: IN_ELECTRON
+      ? `${process.platform === 'win32' ? '' : 'ELECTRON_RUN_AS_NODE=1 '}${JSON.stringify(process.execPath)} ${JSON.stringify(cliScript)}`
+      : `node ${JSON.stringify(cliScript).slice(1, -1)}`,
     session: req.session,
     model: req.model || undefined,
     workdir,
@@ -326,7 +331,9 @@ function cancelRun(runId: string) {
 
 /* ------------------------------------------------------------------ server */
 
-const isLocalOrigin = (origin?: string) => !origin || /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin)
+/** Local pages only: the Vite dev server, a local build, or the desktop app's own `impulse://app` scheme. */
+const isLocalOrigin = (origin?: string) =>
+  !origin || origin === 'impulse://app' || /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin)
 
 const readBody = (req: IncomingMessage) =>
   new Promise<string>((res, rej) => {

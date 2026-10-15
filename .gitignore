@@ -26,3 +26,6 @@ dist-ssr
 # local
 video.mp4
 .impulse/
+
+# desktop builds
+release/
