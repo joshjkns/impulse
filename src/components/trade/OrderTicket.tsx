@@ -1,7 +1,7 @@
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { ChevronDown } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useWalletClient } from 'wagmi'
 import { CoinIcon, LivePrice } from '@/components/common'
@@ -178,22 +178,7 @@ export function OrderTicket({
         </button>
       </div>
 
-      <div className="relative flex h-[40px] rounded-[12px] bg-field p-1">
-        {(['long', 'short'] as const).map((s) => (
-          <button key={s} onClick={() => setSide(s)} className="relative z-10 flex-1 text-[13px] capitalize">
-            {side === s && (
-              <motion.span
-                layoutId={`side-${variant}-${coin}`}
-                className={cn('absolute inset-0 rounded-[9px]', s === 'long' ? 'bg-up-soft' : 'bg-down-soft')}
-                transition={{ type: 'spring', stiffness: 700, damping: 45 }}
-              />
-            )}
-            <span className={cn('relative transition-colors duration-150', side === s ? (s === 'long' ? 'text-up' : 'text-down') : 'text-fg-2')}>
-              {s}
-            </span>
-          </button>
-        ))}
-      </div>
+      <SideToggle side={side} onChange={setSide} layoutKey={`side-${variant}-${coin}`} />
 
       {type === 'limit' && (
         <Field label="Price" suffix="USD">
@@ -324,3 +309,28 @@ function Row({ k, v }: { k: string; v: string }) {
     </div>
   )
 }
+
+/**
+ * Long/short pill. Memoised because the ticket re-renders on every price tick, and the shared-layout highlight
+ * (`layoutId`) would otherwise re-measure the page each time.
+ */
+const SideToggle = memo(function SideToggle({ side, onChange, layoutKey }: { side: 'long' | 'short'; onChange: (s: 'long' | 'short') => void; layoutKey: string }) {
+  return (
+    <div className="relative flex h-[40px] rounded-[12px] bg-field p-1">
+      {(['long', 'short'] as const).map((s) => (
+        <button key={s} onClick={() => onChange(s)} className="relative z-10 flex-1 text-[13px] capitalize">
+          {side === s && (
+            <motion.span
+              layoutId={layoutKey}
+              className={cn('absolute inset-0 rounded-[9px]', s === 'long' ? 'bg-up-soft' : 'bg-down-soft')}
+              transition={{ type: 'spring', stiffness: 700, damping: 45 }}
+            />
+          )}
+          <span className={cn('relative transition-colors duration-150', side === s ? (s === 'long' ? 'text-up' : 'text-down') : 'text-fg-2')}>
+            {s}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+})

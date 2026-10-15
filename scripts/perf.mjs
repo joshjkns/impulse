@@ -109,11 +109,15 @@ function resolve(url, line, col) {
 
 async function scenario(browser, name, path, seed) {
   const page = await browser.newPage({ viewport: { width: 1600, height: 950 } })
+  const startup = name === 'startup'
+  page.on('pageerror', (e) => console.log(`  [${name}] page error: ${e.message}`))
+  page.on('console', (m) => m.type() === 'error' && !/WebSocket|ERR_FAILED|7420|Failed to load resource/.test(m.text()) && console.log(`  [${name}] console error: ${m.text().slice(0, 200)}`))
   await page.addInitScript((seed) => {
-    sessionStorage.setItem('impulse.splash', '1')
-    for (const [k, v] of Object.entries(seed ?? {})) localStorage.setItem(k, v)
+    if (!seed?.splash) sessionStorage.setItem('impulse.splash', '1')
+    for (const [k, v] of Object.entries(seed ?? {})) if (k !== 'splash') localStorage.setItem(k, v)
   }, seed)
-  await page.route('https://api.hyperliquid.xyz/**', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(info(r.request().postDataJSON())) }))
+  // LATENCY=ms simulates the network round trip to Hyperliquid.
+  await page.route('https://api.hyperliquid.xyz/**', async (r) => (process.env.LATENCY && (await new Promise((res) => setTimeout(res, +process.env.LATENCY))), r.fulfill({ contentType: 'application/json', body: JSON.stringify(info(r.request().postDataJSON())) })))
   await page.route(/app\.hyperliquid\.xyz|fonts|127\.0\.0\.1:7420/, (r) => r.abort())
   const timers = []
   await page.routeWebSocket('wss://api.hyperliquid.xyz/ws', (ws) => {
@@ -141,10 +145,20 @@ async function scenario(browser, name, path, seed) {
     }, 120))
     timers.push(setInterval(() => {
       const t = Date.now()
-      for (const s of subs) if (s.type === 'candle') send('candle', candles(s.coin, s.interval, t - 3e6, t).at(-1))
+      for (const s of subs) if (s.type === 'candle') send('candle', candles(s.coin, s.interval, t - 2 * 864e5, t).at(-1))
     }, 500))
   })
+  const t0 = Date.now()
   await page.goto(base + path)
+  if (startup) {
+    // Time until market rows are on screen, and until the splash has gone and the terminal is usable.
+    await page.waitForFunction(() => /\d+ markets/.test(document.body.innerText), null, { polling: 16, timeout: 30000 })
+    const data = Date.now() - t0
+    await page.waitForFunction(() => !document.querySelector('.z-\\[100\\]'), null, { polling: 16, timeout: 30000 })
+    console.log(`startup            markets on screen ${data} ms · terminal usable (splash gone) ${Date.now() - t0} ms`)
+    timers.forEach(clearInterval)
+    return page.close()
+  }
   await page.waitForTimeout(5000)
   if (process.env.DRAG && name.startsWith('custom')) return dragTest(page, name).finally(() => timers.forEach(clearInterval))
   const cdp = await page.context().newCDPSession(page)
@@ -304,6 +318,7 @@ async function dragTest(page, name) {
 const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {})
 const only = process.env.ONLY
 for (const [name, path, seed] of [
+  ['startup', '/', { splash: '1' }],
   ['home', '/', undefined],
   ['market tab', '/workspaces/btc', undefined],
   ['custom workspace', '/workspaces/perf', custom],

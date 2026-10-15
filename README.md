@@ -89,3 +89,4 @@ claude mcp add impulse -- node "$(pwd)/bridge/mcp.ts"
 - `node scripts/shot.mjs <path> <out.png>` — screenshot a route
 - `node scripts/e2e-chat.mjs "<prompt>" <outDir> [path]` — drive a full chat run in a headless browser
 - `node scripts/harness-check.mjs claude grok opencode …` — confirm each harness can call Impulse tools
+- `node scripts/perf.mjs [seconds]` — renderer CPU per page against a mocked Hyperliquid feed (no network needed); run it against `pnpm build && pnpm preview --port 5180`. `DRAG=1` times a widget drag and resize, `PROFILE=n` lists the top n functions (build with `--sourcemap` for names), `TRACE=1` splits paint/commit/script, `LATENCY=ms` simulates network delay for the startup timing

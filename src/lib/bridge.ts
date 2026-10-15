@@ -221,9 +221,10 @@ function connect() {
   }
 }
 
+/** 250ms, 500ms, 1s … capped at 8s: the desktop app's bridge boots alongside the window, so retry quickly at first. */
 function schedule() {
   retry = Math.min(retry + 1, 6)
-  setTimeout(connect, 500 * 2 ** retry)
+  setTimeout(connect, 125 * 2 ** retry)
 }
 
 let started = false

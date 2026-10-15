@@ -100,9 +100,9 @@ export const useMarkets = create<MarketsState>((set, get) => ({
     if (started) return
     started = true
     try {
-      const perpDexs = await info.perpDexs()
+      // One round trip, not two: the dex list (for HIP-3 asset ids) loads alongside the markets.
+      const [perpDexs, ...results] = await Promise.all([info.perpDexs(), ...DEXES.map((dex) => info.metaAndAssetCtxs(dex ? { dex } : {}))])
       const dexIndex = (dex: Dex) => (dex === '' ? 0 : perpDexs.findIndex((d) => d?.name === dex))
-      const results = await Promise.all(DEXES.map((dex) => info.metaAndAssetCtxs(dex ? { dex } : {})))
       const markets: Record<string, Market> = {}
       const meta: Record<string, MarketMeta> = {}
       results.forEach(([dexMeta, ctxs], di) => {
