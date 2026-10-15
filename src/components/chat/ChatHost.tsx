@@ -446,7 +446,8 @@ function AgentShelf({ activeId, onPick }: { activeId?: string; onPick: (id: stri
   const agents = useAgentList()
   const create = useAgents((s) => s.create)
   return (
-    <div className="flex gap-2.5 overflow-x-auto px-3 pb-3 no-scrollbar">
+    // pt-1: the row scrolls horizontally, which also clips vertically, and the avatar ring draws 2px outside its box.
+    <div className="flex gap-2.5 overflow-x-auto px-3 pt-1 pb-3 no-scrollbar">
       {agents.map((a) => (
         <button key={a.id} onClick={() => onPick(a.id)} title={`New chat with ${a.name}`} className="flex w-[52px] shrink-0 flex-col items-center gap-1">
           <span className={cn('rounded-full p-[3px] ring-2 transition-colors', (activeId ?? IMPULSE_AGENT_ID) === a.id ? 'ring-white/25' : 'ring-white/10')}>
