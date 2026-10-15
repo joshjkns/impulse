@@ -13,6 +13,7 @@ Crypto perps and HIP-3 markets (equities, indices, commodities, FX) in one termi
 ![Electron](https://img.shields.io/badge/Electron-2b2e3a?logo=electron&logoColor=9feaf9)
 ![Hyperliquid](https://img.shields.io/badge/Hyperliquid-perps_%2B_HIP--3-97fce4)
 ![MCP](https://img.shields.io/badge/MCP-tools-8b6cf6)
+[![License: MIT](https://img.shields.io/badge/license-MIT-2e84f5)](LICENSE)
 
 </div>
 
@@ -154,3 +155,7 @@ If you build something cool on a fork, feel free to open an issue to show it off
 ## Disclaimer
 
 Impulse is experimental software, not financial advice. Perpetual futures are leveraged and you can lose more than you expect, quickly. AI agents can be confidently wrong, so read every proposed order before you press Place. You use this at your own risk.
+
+## License
+
+[MIT](LICENSE). Fork it, change it, ship it.
