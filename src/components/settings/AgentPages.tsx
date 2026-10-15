@@ -1,6 +1,7 @@
-import { Check, ExternalLink, RefreshCw } from 'lucide-react'
+import { Check, ChevronDown, ExternalLink, RefreshCw } from 'lucide-react'
 import { motion } from 'motion/react'
 import { bridgeSend, BRIDGE_WS, useBridgeStore } from '@/lib/bridge'
+import { ModelMenu, useProviders } from '@/components/chat/ModelPicker'
 import { cn } from '@/lib/utils'
 import { usePrefs } from '@/store/prefs'
 import { CopyButton, Group, Notice, Page, Row, TextField } from './controls'
@@ -15,7 +16,10 @@ function BridgeOffline() {
 
 export function AgentPage() {
   const { harnesses, connected, settings } = useBridgeStore()
-  const { harness, harnessModel, set } = usePrefs()
+  const { harness, set } = usePrefs()
+  const defaults = usePrefs((s) => s.defaultModels)
+  const setDefaultModel = usePrefs((s) => s.setDefaultModel)
+  const providers = useProviders()
 
   const saveCustom = (customCommand: string) => {
     bridgeSend({ type: 'settings', settings: { customCommand } })
@@ -23,10 +27,36 @@ export function AgentPage() {
   }
 
   return (
-    <Page title="AI agent" description="Impulse runs on the AI harness you already use. Nothing is sent to an Impulse server.">
+    <Page
+      title="AI agent"
+      description="Impulse runs on the AI harness you already use. Nothing is sent to an Impulse server. Switch provider and model per chat from the picker under the message box."
+    >
       {!connected && <BridgeOffline />}
+      <Group title="Default models">
+        {providers.length === 0 && <Row label="No harness found" hint="Install one of the harnesses below, then Rescan." />}
+        {providers.map((p) => (
+          <Row key={p.id} label={p.name} hint={p.modelFlag ? 'Used when a chat is on Default.' : `${p.name} picks its model itself.`}>
+            {p.modelFlag && (
+              <ModelMenu
+                providers={[p]}
+                value={{ harness: p.id, model: defaults[p.id] || undefined }}
+                onPick={(v) => setDefaultModel(p.id, v.model ?? '')}
+                defaultLabel={() => 'built in'}
+                side="bottom"
+                align="end"
+              >
+                <button className="flex h-8 max-w-[220px] items-center gap-1.5 rounded-[8px] bg-field px-2.5 text-[12px] ring-1 ring-line hover:ring-[#3a3a42] data-[state=open]:ring-[#3a3a42]">
+                  <span className={cn('truncate', defaults[p.id] ? 'text-fg' : 'text-fg-3')}>{defaults[p.id] || 'Harness default'}</span>
+                  <ChevronDown className="size-3 shrink-0 text-fg-3" />
+                </button>
+              </ModelMenu>
+            )}
+          </Row>
+        ))}
+      </Group>
+
       <Group
-        title="Harness"
+        title="Harnesses"
         aside={
           <button onClick={() => bridgeSend({ type: 'detect' })} className="flex items-center gap-1 text-[11.5px] text-fg-2 hover:text-fg disabled:opacity-40" disabled={!connected}>
             <RefreshCw className="size-3" /> Rescan
@@ -37,7 +67,7 @@ export function AgentPage() {
           <button
             key={h.id}
             disabled={!h.installed}
-            onClick={() => set({ harness: h.id })}
+            onClick={() => set({ harness: h.id, model: undefined })}
             className={cn('flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors first:rounded-t-[12px] last:rounded-b-[12px]', harness === h.id ? 'bg-white/[0.04]' : 'hover:bg-white/[0.02]', !h.installed && 'opacity-45')}
           >
             <span className="min-w-0 flex-1">
@@ -61,20 +91,14 @@ export function AgentPage() {
         ))}
       </Group>
 
-      <Group title="Options">
-        <Row label="Model override" hint="Passed as the harness's model flag. Leave empty for its default." />
-        <div className="px-3.5 pb-3">
-          <TextField value={harnessModel} onCommit={(v) => set({ harnessModel: v.trim() })} placeholder="default" mono />
-        </div>
-        {harness === 'custom' && (
-          <>
-            <Row label="Custom command" hint="Runs in a shell. Prompt in $IMPULSE_PROMPT, MCP config at $IMPULSE_MCP_CONFIG." />
-            <div className="px-3.5 pb-3">
-              <TextField value={settings.customCommand} onCommit={saveCustom} placeholder={'kimi --print -p "$IMPULSE_PROMPT"'} mono />
-            </div>
-          </>
-        )}
-      </Group>
+      {harness === 'custom' && (
+        <Group title="Custom command">
+          <Row label="Command" hint="Runs in a shell. Prompt in $IMPULSE_PROMPT, MCP config at $IMPULSE_MCP_CONFIG, picked model in $IMPULSE_MODEL." />
+          <div className="px-3.5 pb-3">
+            <TextField value={settings.customCommand} onCommit={saveCustom} placeholder={'kimi --print -p "$IMPULSE_PROMPT"'} mono />
+          </div>
+        </Group>
+      )}
     </Page>
   )
 }

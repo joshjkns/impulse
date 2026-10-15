@@ -266,7 +266,7 @@ function startRun(req: ChatRequest, origin?: WebSocket) {
     writeFileSync(mcpFile, JSON.stringify({ mcpServers: { impulse: ctx.mcp } }, null, 2))
     child = spawn('/bin/sh', ['-c', settings.customCommand], {
       cwd: workdir,
-      env: { ...process.env, ...env, PATH: searchPath(), IMPULSE_PROMPT: `${ctx.system}\n\nTools via shell: ${ctx.cliHint} list\n\n---\n\n${ctx.prompt}`, IMPULSE_MCP_CONFIG: mcpFile },
+      env: { ...process.env, ...env, PATH: searchPath(), IMPULSE_PROMPT: `${ctx.system}\n\nTools via shell: ${ctx.cliHint} list\n\n---\n\n${ctx.prompt}`, IMPULSE_MCP_CONFIG: mcpFile, IMPULSE_MODEL: ctx.model ?? '' },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
   } else {
@@ -283,7 +283,7 @@ function startRun(req: ChatRequest, origin?: WebSocket) {
     child = spawn(bin, launch.args, { cwd: workdir, env: { ...process.env, ...env, ...launch.env, PATH: searchPath() }, stdio: ['ignore', 'pipe', 'pipe'] })
   }
   run.child = child
-  broadcast({ type: 'run_started', runId: run.id, threadId: run.threadId, harness: req.harness })
+  broadcast({ type: 'run_started', runId: run.id, threadId: run.threadId, harness: req.harness, model: ctx.model })
 
   let gotText = false
   let error: string | undefined

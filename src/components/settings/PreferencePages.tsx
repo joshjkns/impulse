@@ -154,8 +154,8 @@ export function DataPage() {
 
   const resetPrefs = () => {
     // Keep accounts and the AI harness: those are set up deliberately, not preferences.
-    const { watched, harness, harnessModel } = usePrefs.getState()
-    usePrefs.setState({ ...usePrefs.getInitialState(), watched, harness, harnessModel })
+    const { watched, harness, model, defaultModels, recentModels } = usePrefs.getState()
+    usePrefs.setState({ ...usePrefs.getInitialState(), watched, harness, model, defaultModels, recentModels })
     toast.success('Preferences reset')
   }
 

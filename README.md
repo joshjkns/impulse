@@ -67,6 +67,7 @@ browser ──ws──▶ bridge ──spawn──▶ your harness (claude -p, c
                   └──── POST /call ◀── impulse MCP server (bridge/mcp.ts)
 ```
 
+- The picker under the chat box shows the provider (harness) and model each chat runs on; switch either per chat, search the suggested models, or type any model id. Settings ▸ AI agent sets a default model per provider (used when a chat is on *Default*). The model goes to the harness's own model flag (`$IMPULSE_MODEL` for a custom command); suggestions come from `bridge/harnesses.ts`, plus `opencode models` when OpenCode is installed.
 - Each chat message spawns the selected harness in a run folder with the Impulse MCP server configured for it. Harnesses without MCP (pi, Droid, custom) get a shell CLI instead: `node bridge/cli.ts <tool> '<json>'`.
 - Tool calls stream back as the "Working · N steps" list. Data tools run in the bridge; UI tools (create workspace, add widget, create scan, propose order, read portfolio) run in the tab that sent the message.
 - **Alerts** (price, 24h change, funding, open interest, smart money, news) live in the bridge, so they keep running with the tab closed. Hits go to the app, macOS notifications, and your phone via an [ntfy](https://ntfy.sh) topic set in Settings.

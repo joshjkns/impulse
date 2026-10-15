@@ -46,8 +46,14 @@ interface PrefsState {
   activeScan: string
   showSummary: boolean
   portfolioOpen: boolean
+  /** Provider (harness) new chats start on: the last one picked in the chat. */
   harness: string
-  harnessModel: string
+  /** Model new chats start on. Unset means the provider's default from `defaultModels`. */
+  model?: string
+  /** Per-provider default model ('' or missing = the harness's own default). */
+  defaultModels: Record<string, string>
+  /** Custom model ids typed into the picker, newest first, so they show up next time. */
+  recentModels: Record<string, string[]>
   ntfyTopic: string
   /* trading defaults */
   defaultLeverage: number
@@ -70,6 +76,8 @@ interface PrefsState {
   toggleFavorite: (coin: string) => void
   addScan: (s: Scan) => void
   removeScan: (id: string) => void
+  setDefaultModel: (harness: string, model: string) => void
+  rememberModel: (harness: string, model: string) => void
   set: (p: Partial<PrefsState>) => void
 }
 
@@ -82,7 +90,9 @@ export const usePrefs = create<PrefsState>()(
       showSummary: true,
       portfolioOpen: true,
       harness: 'claude',
-      harnessModel: '',
+      model: undefined,
+      defaultModels: {},
+      recentModels: {},
       ntfyTopic: '',
       defaultLeverage: 6,
       defaultMarginMode: 'isolated',
@@ -102,8 +112,29 @@ export const usePrefs = create<PrefsState>()(
       },
       addScan: (s) => set({ scans: [...get().scans.filter((x) => x.id !== s.id), s], activeScan: s.id }),
       removeScan: (id) => set({ scans: get().scans.filter((s) => s.id !== id) }),
+      setDefaultModel: (harness, model) => {
+        const rest = Object.fromEntries(Object.entries(get().defaultModels).filter(([k]) => k !== harness))
+        set({ defaultModels: model ? { ...rest, [harness]: model } : rest })
+      },
+      rememberModel: (harness, model) => {
+        const list = get().recentModels[harness] ?? []
+        set({ recentModels: { ...get().recentModels, [harness]: [model, ...list.filter((m) => m !== model)].slice(0, 8) } })
+      },
       set: (p) => set(p),
     }),
-    { name: 'impulse.prefs', storage: createJSONStorage(() => localStorage) },
+    {
+      name: 'impulse.prefs',
+      version: 1,
+      storage: createJSONStorage(() => localStorage),
+      // v0 had a single model override shared by every harness; it becomes that harness's default.
+      migrate: (old, version) => {
+        const s = old as Partial<PrefsState> & { harnessModel?: string }
+        if (version < 1) {
+          const { harnessModel, ...rest } = s
+          return { ...rest, defaultModels: harnessModel && rest.harness ? { [rest.harness]: harnessModel } : {}, recentModels: {} }
+        }
+        return s
+      },
+    },
   ),
 )

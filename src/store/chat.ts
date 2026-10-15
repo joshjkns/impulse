@@ -40,6 +40,15 @@ export interface Message {
   durationMs?: number
   error?: string
   orders?: ProposedOrder[]
+  /** Provider and model that produced an assistant reply ('' model = the harness's own default). */
+  harness?: string
+  model?: string
+}
+
+/** Provider (harness) and model a chat runs on. No model means the provider's default from Settings. */
+export interface ModelPick {
+  harness: string
+  model?: string
 }
 
 export interface Thread {
@@ -49,7 +58,10 @@ export interface Thread {
   updatedAt: number
   messages: Message[]
   session?: string
+  /** Harness that owns `session`. */
   harness?: string
+  /** Provider and model this chat runs on; unset follows the last pick (prefs). */
+  pick?: ModelPick
 }
 
 interface ChatState {
@@ -59,6 +71,8 @@ interface ChatState {
   queue: { threadId: string; text: string }[]
   send: (text: string, opts?: { surface?: ChatMode; threadId?: string; newThread?: boolean }) => Promise<void>
   cancel: (threadId?: string) => void
+  /** Switch the active chat's provider/model; new chats start on it too. */
+  setPick: (pick: ModelPick) => void
   newThread: () => string
   selectThread: (id?: string) => void
   deleteThread: (id: string) => void
@@ -72,6 +86,18 @@ interface ChatState {
 }
 
 const uid = () => Math.random().toString(36).slice(2, 10)
+
+/** The provider/model a thread will run on next. */
+export function resolvePick(thread?: Thread): ModelPick {
+  if (thread?.pick) return thread.pick
+  const { harness, model } = usePrefs.getState()
+  return { harness, model }
+}
+
+/** The concrete model id for a pick: its own, else the provider default ('' = the harness decides). */
+export function effectiveModel(pick: ModelPick) {
+  return pick.model ?? usePrefs.getState().defaultModels[pick.harness] ?? ''
+}
 
 /** Short description of where the user is, so the agent can resolve "this market". */
 function context() {
@@ -106,11 +132,13 @@ export const useChat = create<ChatState>()(
       const dispatch = (threadId: string, text: string) => {
         const thread = get().threads.find((t) => t.id === threadId)
         if (!thread) return
-        const harness = usePrefs.getState().harness
+        const pick = resolvePick(thread)
+        const { harness } = pick
+        const model = effectiveModel(pick)
         const runId = uid()
         const now = Date.now()
         const user: Message = { id: uid(), role: 'user', text, createdAt: now, status: 'done', steps: [] }
-        const asst: Message = { id: uid(), role: 'assistant', text: '', createdAt: now, runId, status: 'working', steps: [] }
+        const asst: Message = { id: uid(), role: 'assistant', text: '', createdAt: now, runId, status: 'working', steps: [], harness, model }
         const history = thread.messages
           .filter((m) => m.text && m.status !== 'queued')
           .slice(-12)
@@ -120,7 +148,7 @@ export const useChat = create<ChatState>()(
         set({
           threads: get().threads.map((t) =>
             t.id === threadId
-              ? { ...t, harness, session, updatedAt: now, title: t.messages.length ? t.title : text.slice(0, 48), messages: [...t.messages, user, asst] }
+              ? { ...t, harness, session, pick, updatedAt: now, title: t.messages.length ? t.title : text.slice(0, 48), messages: [...t.messages, user, asst] }
               : t,
           ),
         })
@@ -130,7 +158,7 @@ export const useChat = create<ChatState>()(
           runId,
           prompt: text,
           harness,
-          model: usePrefs.getState().harnessModel,
+          model: model || undefined,
           session,
           history,
           context: context(),
@@ -166,6 +194,11 @@ export const useChat = create<ChatState>()(
           const m = t?.messages.find((x) => x.status === 'working')
           if (m?.runId) bridgeSend({ type: 'cancel', runId: m.runId })
           set({ queue: get().queue.filter((q) => q.threadId !== threadId) })
+        },
+        setPick(pick) {
+          usePrefs.getState().set({ harness: pick.harness, model: pick.model })
+          const id = get().activeThread
+          if (id) set({ threads: get().threads.map((t) => (t.id === id ? { ...t, pick } : t)) })
         },
         newThread() {
           const id = uid()

@@ -10,6 +10,7 @@ import { usePrefs } from '@/store/prefs'
 import { useUI } from '@/store/ui'
 import { Composer } from './Composer'
 import { MessageList } from './MessageList'
+import { useProviderName } from './ModelPicker'
 
 const SURFACE = { type: 'spring', stiffness: 520, damping: 42, mass: 0.8 } as const
 const EASE = [0.2, 0.9, 0.1, 1] as const
@@ -27,12 +28,12 @@ export function AgentAvatar({ size = 22 }: { size?: number }) {
 }
 
 function AgentPill() {
-  const harness = usePrefs((s) => s.harness)
-  const harnesses = useBridgeStore((s) => s.harnesses)
+  const threadHarness = useChat((s) => s.threads.find((t) => t.id === s.activeThread)?.pick?.harness)
+  const harness = usePrefs((s) => threadHarness ?? s.harness)
   const connected = useBridgeStore((s) => s.connected)
-  const h = harnesses.find((x) => x.id === harness)
+  const name = useProviderName()
   return (
-    <span className="flex items-center gap-2 rounded-full bg-white/[0.06] py-1 pr-3 pl-1 text-[13px] text-fg" title={connected ? `Running on ${h?.name ?? harness}` : 'Bridge offline'}>
+    <span className="flex items-center gap-2 rounded-full bg-white/[0.06] py-1 pr-3 pl-1 text-[13px] text-fg" title={connected ? `Running on ${name(harness)}` : 'Bridge offline'}>
       <AgentAvatar />
       Impulse
       <span className={cn('size-1.5 rounded-full', connected ? 'bg-up' : 'bg-fg-3')} />
@@ -59,7 +60,8 @@ export function ChatHost() {
 
   useEffect(() => {
     if (mode !== 'modal') return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMode('closed')
+    // A popover inside (model picker, + menu) handles its own Escape and marks it defaultPrevented.
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !e.defaultPrevented && setMode('closed')
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [mode, setMode])
