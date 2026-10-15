@@ -37,7 +37,7 @@ export function Notifications() {
               dismiss(n.id)
               nav('/feed')
             }}
-            className="pointer-events-auto flex w-full items-start gap-3 rounded-[18px] bg-[#1a1a1e]/95 p-3 text-left shadow-[0_20px_60px_rgba(0,0,0,0.5)] ring-1 ring-white/[0.07] backdrop-blur-xl"
+            className="pointer-events-auto flex w-full items-start gap-3 rounded-[18px] bg-popover/95 p-3 text-left shadow-[0_20px_60px_rgba(0,0,0,0.5)] ring-1 ring-white/[0.07] backdrop-blur-xl"
           >
             <span className="grid size-[38px] shrink-0 place-items-center rounded-[9px] bg-black text-white">
               <LogoMark className="size-6" />

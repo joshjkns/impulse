@@ -257,7 +257,7 @@ export function AccountsPage() {
             onChange={(e) => setAddr(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && add()}
             placeholder="0x… address"
-            className="num h-8 rounded-[8px] bg-field px-2.5 text-[12px] text-fg ring-1 ring-line outline-none placeholder:text-fg-3 focus:ring-[#3a3a42]"
+            className="num h-8 rounded-[8px] bg-field px-2.5 text-[12px] text-fg ring-1 ring-line outline-none placeholder:text-fg-3 focus:ring-ring"
           />
           <div className="flex gap-2">
             <input
@@ -265,7 +265,7 @@ export function AccountsPage() {
               onChange={(e) => setLabel(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && add()}
               placeholder="Label (optional)"
-              className="h-8 flex-1 rounded-[8px] bg-field px-2.5 text-[12.5px] text-fg ring-1 ring-line outline-none placeholder:text-fg-3 focus:ring-[#3a3a42]"
+              className="h-8 flex-1 rounded-[8px] bg-field px-2.5 text-[12.5px] text-fg ring-1 ring-line outline-none placeholder:text-fg-3 focus:ring-ring"
             />
             <Button tone="primary" disabled={!valid || dupe} onClick={add}>
               <Plus className="size-3.5" /> Add

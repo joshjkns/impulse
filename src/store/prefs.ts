@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { deferredStorage } from '@/lib/storage'
 import type { AssetClass } from '@/lib/catalog'
+import type { AccentId, ThemeId } from '@/lib/theme'
 
 /** A market scan is a saved filter over the market list. AI-created scans use the same shape. */
 export interface Scan {
@@ -65,6 +66,8 @@ interface PrefsState {
   /** Require a second press on Place / Close before an order is sent. */
   confirmOrders: boolean
   /* display */
+  theme: ThemeId
+  accent: AccentId
   priceFlash: boolean
   clock24h: boolean
   footerTicker: boolean
@@ -100,6 +103,8 @@ export const usePrefs = create<PrefsState>()(
       defaultOrderType: 'market',
       maxSlippagePct: 8,
       confirmOrders: false,
+      theme: 'impulse',
+      accent: 'blue',
       priceFlash: true,
       clock24h: false,
       footerTicker: true,

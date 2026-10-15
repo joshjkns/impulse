@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { bridgeSend, playChime, useBridgeStore } from '@/lib/bridge'
 import { fmtClock } from '@/lib/format'
+import { ACCENTS, THEMES } from '@/lib/theme'
+import { cn } from '@/lib/utils'
 import { useChat } from '@/store/chat'
 import { usePrefs } from '@/store/prefs'
 import { useWorkspaces } from '@/store/workspaces'
@@ -63,6 +65,49 @@ export function DisplayPage() {
   const p = usePrefs()
   return (
     <Page title="Display" description="How the terminal looks and moves.">
+      <Group title="Theme">
+        <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => p.set({ theme: t.id })}
+              aria-pressed={p.theme === t.id}
+              className={cn(
+                'overflow-hidden rounded-[10px] text-left ring-1 transition-shadow duration-150',
+                p.theme === t.id ? 'ring-2 ring-brand' : 'ring-line hover:ring-ring',
+              )}
+            >
+              <div className="flex h-14 gap-1.5 p-2" style={{ background: t.vars.canvas }}>
+                <div className="w-1/3 rounded-[5px]" style={{ background: t.vars.panel }} />
+                <div className="flex flex-1 flex-col gap-1.5 rounded-[5px] p-1.5" style={{ background: t.vars.panel }}>
+                  <div className="h-1.5 w-3/4 rounded-full" style={{ background: t.vars.fg }} />
+                  <div className="h-1.5 w-1/2 rounded-full" style={{ background: t.vars['fg-3'] }} />
+                  <div className="mt-auto h-1.5 w-1/3 rounded-full bg-brand" />
+                </div>
+              </div>
+              <div className="px-2.5 py-1.5 text-[12px] text-fg" style={{ background: t.vars.raised }}>
+                {t.label}
+              </div>
+            </button>
+          ))}
+        </div>
+        <Row label="Accent" hint="Buttons, toggles, links and your chat bubbles.">
+          {ACCENTS.map((a) => (
+            <button
+              key={a.id}
+              onClick={() => p.set({ accent: a.id })}
+              aria-label={a.label}
+              aria-pressed={p.accent === a.id}
+              title={a.label}
+              className={cn(
+                'size-5 rounded-full ring-offset-2 ring-offset-panel transition-shadow',
+                p.accent === a.id ? 'ring-2 ring-fg' : 'hover:ring-1 hover:ring-fg-3',
+              )}
+              style={{ background: a.color }}
+            />
+          ))}
+        </Row>
+      </Group>
       <Group title="Prices">
         <Row label="Flash on price change" hint="Briefly tint prices green or red when they tick.">
           <Toggle checked={p.priceFlash} onChange={(v) => p.set({ priceFlash: v })} label="Flash on price change" />

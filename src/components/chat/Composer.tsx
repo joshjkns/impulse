@@ -46,7 +46,7 @@ export function Composer({ busy, compact, autoFocus }: { busy: boolean; compact?
           e.preventDefault()
           ref.current?.focus()
         }}
-        className="cursor-text rounded-[16px] bg-field ring-1 ring-[#2c2c33] transition-shadow focus-within:ring-[#3a3a44]"
+        className="cursor-text rounded-[16px] bg-field ring-1 ring-chip transition-shadow focus-within:ring-ring"
       >
         <textarea
           ref={ref}
@@ -93,7 +93,7 @@ export function Composer({ busy, compact, autoFocus }: { busy: boolean; compact?
                 disabled={!hasText}
                 className={cn(
                   'grid size-6 shrink-0 place-items-center rounded-full transition-colors duration-150 active:scale-90',
-                  hasText ? 'bg-brand text-white' : 'bg-[#33333a] text-fg-2',
+                  hasText ? 'bg-brand text-white' : 'bg-chip-hover text-fg-2',
                 )}
                 aria-label="Send"
               >

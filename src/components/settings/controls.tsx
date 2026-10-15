@@ -117,7 +117,7 @@ export function TextField({
       onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
       placeholder={placeholder}
       className={cn(
-        'h-8 w-full rounded-[8px] bg-field px-2.5 text-[12.5px] text-fg ring-1 ring-line outline-none placeholder:text-fg-3 focus:ring-[#3a3a42]',
+        'h-8 w-full rounded-[8px] bg-field px-2.5 text-[12.5px] text-fg ring-1 ring-line outline-none placeholder:text-fg-3 focus:ring-ring',
         mono && 'num text-[12px]',
         className,
       )}
@@ -150,7 +150,7 @@ export function Button({ tone = 'default', className, ...p }: React.ComponentPro
       className={cn(
         'inline-flex h-8 items-center gap-1.5 rounded-[8px] px-3 text-[12px] whitespace-nowrap transition-colors duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40',
         tone === 'primary' && 'bg-fg font-medium text-[#111113] hover:opacity-90',
-        tone === 'default' && 'bg-chip text-fg hover:bg-[#35353a]',
+        tone === 'default' && 'bg-chip text-fg hover:bg-chip-hover',
         tone === 'danger' && 'bg-down-soft/60 text-[#ff9aa9] hover:bg-down-soft',
         className,
       )}

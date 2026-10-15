@@ -188,7 +188,7 @@ export function TradeLayout({ tab }: { tab: Extract<Tab, { kind: 'market' }> }) 
                   initial={{ opacity: 0, scale: 0.92 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.16, ease: EASE }}
-                  className="flex items-center gap-1.5 rounded-full bg-[#202127] px-3 py-1.5 text-[12px] text-fg shadow-lg ring-1 ring-white/10"
+                  className="flex items-center gap-1.5 rounded-full bg-raised px-3 py-1.5 text-[12px] text-fg shadow-lg ring-1 ring-white/10"
                 >
                   <ArrowLeftRight className="size-3.5 text-brand" /> {LABEL[incoming]}
                 </motion.span>
@@ -235,7 +235,7 @@ export function TradeLayout({ tab }: { tab: Extract<Tab, { kind: 'market' }> }) 
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.14, ease: EASE }}
-            className="pointer-events-none fixed z-50 flex items-center gap-1.5 rounded-[10px] bg-[#202127] py-2 pr-3.5 pl-2 text-[12.5px] text-fg shadow-[0_18px_48px_-12px_rgba(0,0,0,0.7)] ring-1 ring-white/10"
+            className="pointer-events-none fixed z-50 flex items-center gap-1.5 rounded-[10px] bg-raised py-2 pr-3.5 pl-2 text-[12.5px] text-fg shadow-[0_18px_48px_-12px_rgba(0,0,0,0.7)] ring-1 ring-white/10"
             style={{ left: drag.x + 10, top: drag.y + 10 }}
           >
             <GripVertical className="size-3.5 text-fg-3" />

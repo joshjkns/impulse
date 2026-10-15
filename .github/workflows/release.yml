@@ -1,0 +1,74 @@
+name: Release
+
+# Push a version tag to build the desktop app for every OS and publish a GitHub release:
+#   git tag v0.2.0 && git push origin v0.2.0
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: --mac --x64 --arm64
+          - os: windows-latest
+            target: --win
+          - os: ubuntu-latest
+            target: --linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      # Builds are unsigned; don't let electron-builder go looking for a signing identity.
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The tag is the version: v0.2.0 builds Impulse 0.2.0.
+      - run: pnpm pkg set version="${GITHUB_REF_NAME#v}"
+        shell: bash
+      - run: pnpm build
+      - run: pnpm exec electron-builder ${{ matrix.target }} --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: impulse-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          body: |
+            Desktop builds for macOS (Apple Silicon and Intel), Windows and Linux.
+
+            These builds are **unsigned**:
+            - **macOS:** if it says the app is damaged, run `xattr -cr /Applications/Impulse.app` once.
+            - **Windows:** SmartScreen may warn; choose *More info → Run anyway*.
+

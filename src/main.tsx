@@ -7,10 +7,17 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import { WagmiProvider } from 'wagmi'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { applyTheme } from '@/lib/theme'
+import { usePrefs } from '@/store/prefs'
 import { rainbowTheme, wagmiConfig } from '@/wallet/config'
 import App from './App'
 
 const queryClient = new QueryClient()
+
+// Prefs hydrate synchronously from localStorage, so the saved theme is on before the first paint.
+const syncTheme = ({ theme, accent }: { theme: string; accent: string }) => applyTheme(theme, accent)
+syncTheme(usePrefs.getState())
+usePrefs.subscribe((s, prev) => (s.theme !== prev.theme || s.accent !== prev.accent) && syncTheme(s))
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

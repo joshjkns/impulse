@@ -28,10 +28,10 @@ export function AccountSummary() {
         <Row k="Unified Account Leverage" v={`${leverage.toFixed(2)}x`} />
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <button onClick={() => (a.address ? setDialog('deposit') : openConnectModal?.())} className="h-[38px] rounded-[10px] bg-chip/80 text-[13px] text-fg transition-colors hover:bg-[#35353a] active:scale-[0.985]">
+        <button onClick={() => (a.address ? setDialog('deposit') : openConnectModal?.())} className="h-[38px] rounded-[10px] bg-chip/80 text-[13px] text-fg transition-colors hover:bg-chip-hover active:scale-[0.985]">
           Deposit
         </button>
-        <button onClick={() => (a.address ? setDialog('withdraw') : openConnectModal?.())} className="h-[38px] rounded-[10px] bg-chip/80 text-[13px] text-fg transition-colors hover:bg-[#35353a] active:scale-[0.985]">
+        <button onClick={() => (a.address ? setDialog('withdraw') : openConnectModal?.())} className="h-[38px] rounded-[10px] bg-chip/80 text-[13px] text-fg transition-colors hover:bg-chip-hover active:scale-[0.985]">
           Withdraw
         </button>
       </div>

@@ -102,7 +102,7 @@ function Portfolio() {
       {!address ? (
         <Empty>
           <span>Connect a wallet to see positions</span>
-          <button onClick={openConnectModal} className="mt-2 rounded-lg bg-chip px-3 py-1.5 text-fg transition-colors hover:bg-[#35353a]">
+          <button onClick={openConnectModal} className="mt-2 rounded-lg bg-chip px-3 py-1.5 text-fg transition-colors hover:bg-chip-hover">
             Connect wallet
           </button>
         </Empty>

@@ -87,7 +87,7 @@ function AgentEditor({ id }: { id: string }) {
               placeholder="Agent name"
               maxLength={40}
               aria-label="Agent name"
-              className="h-9 w-full rounded-[9px] bg-field px-3 text-[15px] text-fg ring-1 ring-line outline-none placeholder:text-fg-3 focus:ring-[#3a3a42]"
+              className="h-9 w-full rounded-[9px] bg-field px-3 text-[15px] text-fg ring-1 ring-line outline-none placeholder:text-fg-3 focus:ring-ring"
             />
           )}
         </div>
@@ -108,7 +108,7 @@ function AgentEditor({ id }: { id: string }) {
                 onChange={(e) => update(id, { glyph: e.target.value })}
                 aria-label="Glyph"
                 placeholder="—"
-                className="h-8 w-14 rounded-[8px] bg-field text-center text-[15px] text-fg ring-1 ring-line outline-none placeholder:text-fg-3 focus:ring-[#3a3a42]"
+                className="h-8 w-14 rounded-[8px] bg-field text-center text-[15px] text-fg ring-1 ring-line outline-none placeholder:text-fg-3 focus:ring-ring"
               />
             </Row>
             <div className="flex flex-wrap gap-1 px-3 pb-3">
