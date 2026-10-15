@@ -1,7 +1,7 @@
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { ChevronDown, GripVertical } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useWalletClient } from 'wagmi'
 import { CoinIcon, LivePrice } from '@/components/common'
@@ -65,6 +65,7 @@ export function OrderTicket({
   const [sl, setSl] = useState(initial?.stopLoss ? String(initial.stopLoss) : '')
   const [levOpen, setLevOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const root = useRef<HTMLDivElement>(null)
 
   useEffect(() => setLev((l) => Math.min(l, maxLev)), [maxLev])
   useEffect(() => {
@@ -118,7 +119,7 @@ export function OrderTicket({
   const card = variant === 'card'
 
   return (
-    <div className={cn('relative flex flex-col', card ? 'gap-3 p-4' : 'gap-3 p-3')}>
+    <div ref={root} className={cn('relative flex flex-col', card ? 'gap-3 p-4' : 'gap-3 p-3')}>
       {card && (
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2.5">
@@ -168,7 +169,8 @@ export function OrderTicket({
         value={lev}
         max={maxLev}
         onConfirm={setLev}
-        className={card ? '-inset-x-12 top-16' : 'inset-x-1 top-12'}
+        anchor={root}
+        offsetY={card ? 64 : 50}
       />
 
       <div className="flex items-center justify-around py-1 text-[13px]">

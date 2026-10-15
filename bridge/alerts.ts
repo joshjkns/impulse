@@ -180,7 +180,6 @@ export class AlertEngine {
       } catch {
         /* GDELT rate-limits bursts; try next tick */
       }
-      await new Promise((r) => setTimeout(r, 6000))
     }
     this.save()
   }

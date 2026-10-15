@@ -126,10 +126,12 @@ async function runBridgeTool(name: string, a: Record<string, any>): Promise<unkn
     }
     case 'search_news':
       return news(String(a.query), a.hours ?? 24, a.limit ?? 10)
-    case 'create_alert':
-      return alerts.create(a as never)
+    case 'create_alert': {
+      const al = await alerts.create(a as never)
+      return { id: al.id, title: al.title, description: al.description, kind: al.kind, coin: al.coin, icon: al.icon, status: 'live' }
+    }
     case 'list_alerts':
-      return alerts.list()
+      return alerts.list().map(({ armed: _a, seen: _s, ...rest }) => rest)
     case 'delete_alert':
       alerts.remove(String(a.id))
       return { deleted: a.id }
@@ -216,7 +218,7 @@ function startRun(req: ChatRequest, origin?: WebSocket) {
       : ''
   const ctx: RunContext = {
     prompt: `${req.context ? `[Context: ${req.context}]\n\n` : ''}${transcript}${req.prompt}`,
-    system: SYSTEM_PROMPT,
+    system: `${SYSTEM_PROMPT}\n- Notifications for alerts go to the Impulse app${settings.ntfyTopic ? ' and the user\'s phone (ntfy push is configured)' : ' and desktop (phone push is not configured; mention they can add an ntfy topic in Settings)'}.`,
     mcp: { command: process.execPath, args: [mcpScript], env },
     cliHint: `node ${JSON.stringify(cliScript).slice(1, -1)}`,
     session: req.session,

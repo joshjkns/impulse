@@ -53,13 +53,28 @@ function MessageView({ m, prev }: { m: Message; prev?: Message }) {
       <AnimatePresence initial={false}>{working && !m.text && <TypingBubble key="typing" />}</AnimatePresence>
       {(m.text || alerts.length > 0) && (
         <Bubble side="agent" tail={!m.orders?.length}>
-          {m.text && <RichText text={m.text} />}
-          {alerts.length > 0 && (
-            <div className={cn('space-y-1.5', m.text && 'mt-2')}>
-              {alerts.map((s) => (
-                <AlertCard key={s.id} step={s} />
-              ))}
-            </div>
+          {alerts.length > 0 ? (
+            // Alert replies read: confirmation · cards · closing line.
+            (() => {
+              const [head, ...rest] = m.text.trim().split(/\n{2,}/)
+              return (
+                <>
+                  {head && <RichText text={head} />}
+                  <div className={cn('space-y-1.5', head && 'mt-2')}>
+                    {alerts.map((s) => (
+                      <AlertCard key={s.id} step={s} />
+                    ))}
+                  </div>
+                  {rest.length > 0 && (
+                    <div className="mt-2">
+                      <RichText text={rest.join('\n\n')} />
+                    </div>
+                  )}
+                </>
+              )
+            })()
+          ) : (
+            m.text && <RichText text={m.text} />
           )}
         </Bubble>
       )}

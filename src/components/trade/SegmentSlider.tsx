@@ -87,7 +87,7 @@ export function SegmentSlider({
       )}
     >
       <div className="absolute inset-y-0 right-[10px] left-[10px]">
-        <motion.div className="absolute inset-y-[-100px] -left-[10px] bg-white/[0.035]" style={{ width }} />
+        <motion.div className="absolute inset-y-0 -left-[10px] rounded-l-[10px] bg-white/[0.035]" style={{ width }} />
         {ticks.map((t) => (
           <span
             key={t}

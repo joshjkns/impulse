@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import { CoinIcon } from '@/components/common'
 import { cn } from '@/lib/utils'
 import { SegmentSlider } from './SegmentSlider'
@@ -55,7 +56,8 @@ export function LeveragePanel({
   value,
   max,
   onConfirm,
-  className,
+  anchor,
+  offsetY = 48,
 }: {
   open: boolean
   onClose: () => void
@@ -64,8 +66,18 @@ export function LeveragePanel({
   value: number
   max: number
   onConfirm: (v: number) => void
-  className?: string
+  /** Element the panel overlays (the ticket). The panel is portalled so scroll containers can't clip it. */
+  anchor: RefObject<HTMLElement | null>
+  offsetY?: number
 }) {
+  const [pos, setPos] = useState<{ top: number; left: number; width: number }>()
+  useLayoutEffect(() => {
+    if (!open || !anchor.current) return
+    const r = anchor.current.getBoundingClientRect()
+    const width = Math.min(window.innerWidth - 24, Math.max(r.width + 110, 440))
+    const left = Math.min(window.innerWidth - width - 12, Math.max(12, r.left + r.width / 2 - width / 2))
+    setPos({ top: r.top + offsetY, left, width })
+  }, [open, anchor, offsetY])
   const [draft, setDraft] = useState(value)
   const [burst, setBurst] = useState(0)
   const prev = useRef(value)
@@ -91,17 +103,17 @@ export function LeveragePanel({
 
   const marks = marksFor(max)
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      {open && (
+      {open && pos && (
         <motion.div
           ref={ref}
+          style={{ originY: 0, top: pos.top, left: pos.left, width: pos.width }}
           initial={{ opacity: 0, scale: 0.96, y: -6 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.97, y: -4 }}
           transition={{ duration: 0.16, ease: [0.2, 0.9, 0.1, 1] }}
-          style={{ originY: 0 }}
-          className={cn('absolute z-30 rounded-[16px] bg-[#141417] ring-1 ring-white/[0.06] shadow-[0_30px_80px_rgba(0,0,0,0.6)]', className)}
+          className="fixed z-50 rounded-[16px] bg-[#141417] shadow-[0_30px_80px_rgba(0,0,0,0.6)] ring-1 ring-white/[0.06]"
         >
           <div className="flex items-center gap-2 px-5 pt-4 pb-3">
             <CoinIcon coin={coin} className="size-[18px] rounded-full" />
@@ -166,6 +178,7 @@ export function LeveragePanel({
           </div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   )
 }

@@ -160,8 +160,26 @@ export interface Headline {
   seen: string
 }
 
+// GDELT allows one request per 5 seconds per client; serialize every caller through one queue.
+let gdeltChain: Promise<unknown> = Promise.resolve()
+let gdeltLast = 0
+const gdeltSlot = <T>(fn: () => Promise<T>): Promise<T> => {
+  const run = gdeltChain.then(async () => {
+    const wait = gdeltLast + 5500 - Date.now()
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait))
+    gdeltLast = Date.now()
+    return fn()
+  })
+  gdeltChain = run.catch(() => undefined)
+  return run
+}
+
 /** GDELT DOC 2.0 — free, keyless global news search. */
-export async function news(query: string, hours: number, limit: number): Promise<Headline[]> {
+export function news(query: string, hours: number, limit: number): Promise<Headline[]> {
+  return gdeltSlot(() => newsNow(query, hours, limit))
+}
+
+async function newsNow(query: string, hours: number, limit: number): Promise<Headline[]> {
   const q = query.trim()
   const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(`${q} sourcelang:english`)}&mode=artlist&format=json&sort=datedesc&maxrecords=${limit}&timespan=${Math.round(hours)}h`
   const res = await fetch(url, { headers: { 'user-agent': 'impulse-terminal/1.0' }, signal: AbortSignal.timeout(15_000) })
