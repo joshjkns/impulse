@@ -160,6 +160,17 @@ async function scenario(browser, name, path, seed) {
     return page.close()
   }
   await page.waitForTimeout(5000)
+  if (process.env.CHECK && name === 'home') {
+    // Windowed table: scrolling to the end must reach the last market, with only a screenful of rows in the DOM.
+    const r = await page.evaluate(async () => {
+      const sc = [...document.querySelectorAll('.overflow-auto')].find((e) => e.scrollHeight > e.clientHeight + 100)
+      sc.scrollTop = sc.scrollHeight
+      await new Promise((res) => setTimeout(res, 300))
+      const rows = [...sc.querySelectorAll('.group.flex.cursor-pointer')]
+      return { rows: rows.length, last: rows.at(-1)?.innerText.split('\n')[0], header: sc.innerText.match(/\d+ markets/)?.[0] }
+    })
+    console.log('  table check:', JSON.stringify(r))
+  }
   if (process.env.DRAG && name.startsWith('custom')) return dragTest(page, name).finally(() => timers.forEach(clearInterval))
   const cdp = await page.context().newCDPSession(page)
   await cdp.send('Performance.enable')

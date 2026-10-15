@@ -80,6 +80,7 @@ export const CandleChart = memo(function CandleChart({
 
   useEffect(() => {
     fitted.current = false
+    pushed.current = undefined
   }, [coin, interval])
 
   useEffect(() => {
