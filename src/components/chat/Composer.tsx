@@ -1,10 +1,11 @@
-import { ArrowUp, Plus, Settings2, SquarePen } from 'lucide-react'
+import { ArrowUp, Plus, Settings2, Sparkles, SquarePen } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { useChat } from '@/store/chat'
 import { useUI } from '@/store/ui'
+import { useActiveAgent } from './Agents'
 import { ModelPicker } from './ModelPicker'
 
 export function Composer({ busy, compact, autoFocus }: { busy: boolean; compact?: boolean; autoFocus?: boolean }) {
@@ -13,6 +14,7 @@ export function Composer({ busy, compact, autoFocus }: { busy: boolean; compact?
   const send = useChat((s) => s.send)
   const cancel = useChat((s) => s.cancel)
   const queued = useChat((s) => s.queue.filter((q) => q.threadId === s.activeThread).length)
+  const agent = useActiveAgent()
 
   useEffect(() => {
     if (autoFocus) ref.current?.focus()
@@ -58,7 +60,7 @@ export function Composer({ busy, compact, autoFocus }: { busy: boolean; compact?
             }
             if (e.key === 'Escape' && busy) cancel()
           }}
-          placeholder={busy ? 'Enter queues it for after this reply' : 'Message Impulse'}
+          placeholder={busy ? 'Enter queues it for after this reply' : `Message ${agent.name}`}
           className="block max-h-[120px] min-h-[34px] w-full resize-none bg-transparent px-3 pt-[9px] pb-1 text-[12.5px] leading-[18px] text-fg outline-none placeholder:text-fg-3"
         />
         <div className="flex items-center gap-1 px-1.5 pb-1.5">
@@ -124,10 +126,16 @@ function PlusMenu() {
           <SquarePen className="size-3.5 text-fg-2" /> New chat
         </button>
         <button
+          onClick={() => (openSettings(true, 'agents'), setOpen(false))}
+          className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[12.5px] text-fg hover:bg-hover"
+        >
+          <Sparkles className="size-3.5 text-fg-2" /> Agents
+        </button>
+        <button
           onClick={() => (openSettings(true, 'agent'), setOpen(false))}
           className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[12.5px] text-fg hover:bg-hover"
         >
-          <Settings2 className="size-3.5 text-fg-2" /> Agent settings
+          <Settings2 className="size-3.5 text-fg-2" /> Providers & models
         </button>
       </PopoverContent>
     </Popover>

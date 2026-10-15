@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useBook } from '@/components/trade/Orderbook'
-import { fmtPx } from '@/lib/format'
-import { useMarket } from '@/store/markets'
+import { dateFormat, fmtPx } from '@/lib/format'
+import { useMarketMeta } from '@/store/markets'
 import type { WidgetProps } from './registry'
 import { LegendChip } from './WidgetFrame'
 
@@ -15,14 +15,17 @@ const RAMP = [
   [214, 226, 46],
   [250, 236, 70],
 ]
-function ramp(t: number) {
-  const x = Math.min(0.9999, Math.max(0, t)) * (RAMP.length - 1)
+/** The ramp sampled into 256 ready-made CSS colours, so a redraw of ~15k cells allocates no strings. */
+const LUT = Array.from({ length: 256 }, (_, n) => {
+  const x = Math.min(0.9999, n / 255) * (RAMP.length - 1)
   const i = Math.floor(x)
   const f = x - i
   const a = RAMP[i]
   const b = RAMP[i + 1]
   return `rgb(${a.map((v, k) => Math.round(v + (b[k] - v) * f)).join(',')})`
-}
+})
+const ramp = (t: number) => LUT[Math.round(Math.min(1, Math.max(0, t)) * 255)]
+const axisTime = dateFormat({ hour: '2-digit', minute: '2-digit', hour12: false })
 
 interface Snap {
   t: number
@@ -35,7 +38,7 @@ const AXIS_W = 64
 
 /** Dollars resting at each price level over time, sampled from the live L2 book since the widget opened. */
 export function OrderbookHeatmapWidget({ coin, onReady }: WidgetProps) {
-  const m = useMarket(coin)
+  const m = useMarketMeta(coin)
   // 3 significant figures ≈ 20 levels covering a few percent either side of mid.
   const book = useBook(coin, 3)
   const snaps = useRef<Snap[]>([])
@@ -76,12 +79,15 @@ export function OrderbookHeatmapWidget({ coin, onReady }: WidgetProps) {
     const W = w.clientWidth - AXIS_W
     const H = w.clientHeight - 22
     if (W <= 0 || H <= 0) return
-    c.width = W * dpr
-    c.height = H * dpr
-    c.style.width = `${W}px`
-    c.style.height = `${H}px`
-    const ctx = c.getContext('2d')!
-    ctx.scale(dpr, dpr)
+    // Resizing a canvas reallocates its backing store; only do it when the panel actually changed size.
+    if (c.width !== Math.round(W * dpr) || c.height !== Math.round(H * dpr)) {
+      c.width = Math.round(W * dpr)
+      c.height = Math.round(H * dpr)
+      c.style.width = `${W}px`
+      c.style.height = `${H}px`
+    }
+    const ctx = c.getContext('2d', { alpha: true })!
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, W, H)
 
     const mid = list[list.length - 1].mid
@@ -135,7 +141,7 @@ export function OrderbookHeatmapWidget({ coin, onReady }: WidgetProps) {
       return { y: yOf(px), px }
     }))
     setMidTag({ y: yOf(mid), px: mid })
-    const fmt = (t: number) => new Date(t).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+    const fmt = (t: number) => axisTime.format(t)
     const labels: { x: number; label: string }[] = []
     list.forEach((s, i) => {
       const x = startX + i * colW + colW / 2

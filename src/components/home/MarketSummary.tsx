@@ -1,10 +1,13 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { CandleChart } from '@/components/charts/CandleChart'
+import { Suspense, lazy } from 'react'
 import { CoinIcon, LivePrice } from '@/components/common'
 import { useBridgeStore } from '@/lib/bridge'
 import { fmtCompact, fmtPct, tone } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useMarket } from '@/store/markets'
+
+/** The chart library (~170 kB) loads after first paint instead of blocking it. */
+const CandleChart = lazy(() => import('@/components/charts/CandleChart').then((m) => ({ default: m.CandleChart })))
 
 export function MarketSummary({ coin }: { coin: string }) {
   const m = useMarket(coin)
@@ -32,7 +35,9 @@ export function MarketSummary({ coin }: { coin: string }) {
           </div>
           <div className="mt-3 text-[10.5px] text-fg-2">15m · {m?.dex ? 'trade.xyz on Hyperliquid' : 'Hyperliquid'}</div>
           <div className="mt-1 h-[176px]">
-            <CandleChart coin={coin} interval="15m" bars={96} live />
+            <Suspense fallback={null}>
+              <CandleChart coin={coin} interval="15m" bars={96} live />
+            </Suspense>
           </div>
           <SmartMoney coin={coin} />
           <div className="mt-4 grid grid-cols-3 gap-2 text-[11px]">

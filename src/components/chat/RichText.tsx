@@ -3,16 +3,26 @@ import { Fragment, type ReactNode } from 'react'
 import { nav } from '@/lib/uiTools'
 import { useUI } from '@/store/ui'
 import { useWorkspaces } from '@/store/workspaces'
+import { BLOCK_EMBED, EMBED, Embed } from './Embeds'
 
 /**
- * Minimal markdown for chat replies: paragraphs, "-" bullets, **bold**, `code`, [links](url) and
- * [[workspace:id]] chips that jump to the workspace the agent built.
+ * Minimal markdown for chat replies: paragraphs, "-" bullets, **bold**, `code`, [links](url),
+ * [[workspace:id]] chips that jump to the workspace the agent built, and live embeds (see Embeds.tsx).
  */
 export function RichText({ text }: { text: string }) {
-  const blocks = text.trim().split(/\n{2,}/)
+  const blocks = text
+    // A token still streaming in ("[[chart:BT") stays hidden until it's complete.
+    .replace(/\[\[[^\]\n]*\]?$/, '')
+    // Charts and widgets are blocks: give each its own paragraph wherever the agent wrote it.
+    .replace(BLOCK_EMBED, (t) => `\n\n${t}\n\n`)
+    .trim()
+    .split(/\n{2,}/)
+    .map((b) => b.trim())
+    .filter(Boolean)
   return (
     <div className="space-y-2">
       {blocks.map((b, i) => {
+        if (/^\[\[(?:chart|widget):[^\]\n]+\]\]$/.test(b)) return <Embed key={i} token={b} />
         const lines = b.split('\n')
         if (lines.every((l) => /^\s*[-*•]\s+/.test(l)))
           return (
@@ -32,7 +42,7 @@ export function RichText({ text }: { text: string }) {
   )
 }
 
-const TOKEN = /(\*\*[^*]+\*\*|`[^`]+`|\[\[workspace:[\w-]+\]\]|\[[^\]]+\]\(https?:[^)]+\))/g
+const TOKEN = /(\*\*[^*]+\*\*|`[^`]+`|\[\[workspace:[\w-]+\]\]|\[\[ticker:[^\]\n]+\]\]|\[[^\]]+\]\(https?:[^)]+\))/g
 
 function inline(s: string): ReactNode[] {
   return s.split(TOKEN).map((part, i) => {
@@ -40,6 +50,7 @@ function inline(s: string): ReactNode[] {
     if (part.startsWith('**')) return <strong key={i} className="font-semibold text-inherit">{part.slice(2, -2)}</strong>
     if (part.startsWith('`')) return <code key={i} className="rounded bg-black/25 px-1 text-[11.5px]">{part.slice(1, -1)}</code>
     if (part.startsWith('[[workspace:')) return <WorkspaceChip key={i} id={part.slice(12, -2)} />
+    if (EMBED.test(part)) return <Embed key={i} token={part} />
     const link = /^\[([^\]]+)\]\((https?:[^)]+)\)$/.exec(part)
     if (link)
       return (

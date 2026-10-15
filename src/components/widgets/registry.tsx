@@ -46,7 +46,7 @@ export const WIDGETS: Record<WidgetKind, ComponentType<WidgetProps>> = {
   ),
   trades: ({ coin, onReady }) => (
     <Ready onReady={onReady}>
-      <Orderbook coin={coin} className="h-full" />
+      <Orderbook coin={coin} className="h-full" initialTab="trades" />
     </Ready>
   ),
   positions: ({ onReady }) => (

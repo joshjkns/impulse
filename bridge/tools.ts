@@ -179,6 +179,71 @@ export const TOOLS: ToolDef[] = [
     label: (a) => `Drawing ${String(a.kind ?? 'widget').replace(/_/g, ' ')}`,
   },
   {
+    name: 'list_workspaces',
+    target: 'ui',
+    description: [
+      'List open workspace tabs in tab order, which one is active, and for custom workspaces their widgets and layout.',
+      'Layout is on a 24 x 24 grid that fills the screen: x (column, 0-23), y (row, 0 = top), w and h in grid units.',
+      'Rows below 24 sit below the fold and scroll. Use before rearranging, renaming or removing anything.',
+    ].join(' '),
+    shape: {},
+    label: () => 'Reading workspaces',
+  },
+  {
+    name: 'arrange_workspace',
+    target: 'ui',
+    description: [
+      'Rearrange the widgets of a custom workspace on its 24 x 24 grid. Give a position for each widget you want to place:',
+      'widgets you list are placed in order (one that would overlap an earlier one is pushed down), widgets you leave out keep',
+      'their place where it is free. Sizes are clamped to each widget\'s minimum (about 5 x 5; order books 4 x 6; notes 4 x 3).',
+      'Gaps close upwards, as on screen. Or pass tidy: true to drop the manual layout and evenly auto-tile every widget.',
+      'Returns the resulting layout. To fill the screen, make the rows of widgets add up to h = 24.',
+    ].join(' '),
+    shape: {
+      workspaceId: z.string(),
+      layout: z
+        .array(z.object({ widgetId: z.string(), x: z.number().int().min(0).max(23), y: z.number().int().min(0), w: z.number().int().min(1).max(24), h: z.number().int().min(1).max(48) }))
+        .optional(),
+      tidy: z.boolean().optional(),
+    },
+    label: () => 'Rearranging workspace',
+  },
+  {
+    name: 'swap_widgets',
+    target: 'ui',
+    description: 'Swap the positions and sizes of two widgets in a custom workspace, like dragging one onto the other.',
+    shape: { workspaceId: z.string(), a: z.string().describe('widgetId'), b: z.string().describe('widgetId') },
+    label: () => 'Swapping widgets',
+  },
+  {
+    name: 'update_widget',
+    target: 'ui',
+    description: "Change a widget's market, title or subtitle (or a note's markdown). Its kind can't change: remove it and add another.",
+    shape: { workspaceId: z.string(), widgetId: z.string(), coin: coin.optional(), title: z.string().optional(), subtitle: z.string().optional(), markdown: z.string().optional() },
+    label: () => 'Updating widget',
+  },
+  {
+    name: 'remove_widget',
+    target: 'ui',
+    description: 'Remove a widget from a custom workspace.',
+    shape: { workspaceId: z.string(), widgetId: z.string() },
+    label: () => 'Removing widget',
+  },
+  {
+    name: 'rename_workspace',
+    target: 'ui',
+    description: 'Rename a custom workspace tab.',
+    shape: { workspaceId: z.string(), title: z.string() },
+    label: (a) => `Renaming workspace to "${String(a.title ?? '')}"`,
+  },
+  {
+    name: 'reorder_workspaces',
+    target: 'ui',
+    description: 'Reorder the workspace tabs. Pass workspace ids in the new order; tabs you leave out keep their relative order after them.',
+    shape: { order: z.array(z.string()).min(1) },
+    label: () => 'Reordering tabs',
+  },
+  {
     name: 'add_note',
     target: 'ui',
     description: 'Add a markdown note widget to a workspace (theses, levels, checklists).',
@@ -245,6 +310,12 @@ Style:
 - Reply like a sharp desk analyst in a chat bubble: short paragraphs, concrete numbers, no headings, no tables, no emojis.
 - Bold the market name the first time with **name**.
 - When you built a workspace, reference it inline as [[workspace:<id>]] so it renders as a link chip.
+- You can put live components in a reply by writing tokens in your text, and the app renders them in the bubble:
+  [[ticker:BTC]] or [[ticker:BTC,ETH,xyz:CL]] for inline live price chips (use these instead of typing prices when naming a few markets);
+  [[chart:BTC]] or [[chart:xyz:CL:4h]] for a live candle chart (interval 1m, 5m, 15m, 1h, 4h or 1d; default 1h);
+  [[widget:<kind>:<coin>]] for any add_widget kind, e.g. [[widget:funding:BTC]], [[widget:orderbook:ETH]], [[widget:volume_profile:xyz:NVDA]].
+  Charts and widgets show on their own line. Use at most two or three per reply, only where a picture beats a number; for a full dashboard build a workspace instead.
+- To change an existing workspace, call list_workspaces first, then arrange_workspace, swap_widgets, update_widget, remove_widget, rename_workspace or reorder_workspaces.
 - After creating alerts, reply with exactly two short paragraphs: a one-line confirmation like "Done. Two alerts are live.", then one line about where notifications will arrive. The app renders the alert cards between them, so never describe the alerts or their internals.
 - Never place trades. For trade ideas use propose_order, which only pre-fills a ticket for the user.
 - When asked for a market summary, create a workspace titled "<SYMBOL> market summary" and add 6 widgets in this order: price_oi, orderbook_heatmap, funding, volume_profile, liquidations, monthly_returns. Then reply with a 3-4 sentence read of the market.`

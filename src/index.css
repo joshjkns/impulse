@@ -207,17 +207,30 @@
   }
 }
 
+/* LivePrice tick flash (set imperatively; unlayered so it wins over the text colour utility). */
+[data-flash='up'] { color: var(--up); }
+[data-flash='down'] { color: var(--down); }
+
 /* react-grid-layout overrides — matte placeholder, snappy reflow, edge + corner resize handles */
-.react-grid-layout {
-  transition: height 200ms var(--ease-snap);
-}
+/* Positions slide; sizes snap. Animating width/height made every chart inside re-layout each frame a step
+   behind its box, which read as content jumping around after a drop or swap. */
 .react-grid-item {
-  transition: transform 220ms var(--ease-snap), width 220ms var(--ease-snap), height 220ms var(--ease-snap);
+  transition: transform 220ms var(--ease-snap);
 }
 .react-grid-item.react-draggable-dragging,
 .react-grid-item.resizing {
   transition: none;
   z-index: 3;
+}
+/* While resizing, neighbours follow the shared edge live; easing them made them trail the cursor and wobble. */
+.custom-grid.is-resize .react-grid-item {
+  transition: none;
+}
+/* The moving item and the placeholder get their own layers for the gesture, so each mouse move is a
+   compositor translate instead of repainting the widget (and its blurred shadow). */
+.react-grid-item.react-draggable-dragging,
+.react-grid-item.react-grid-placeholder {
+  will-change: transform;
 }
 .react-grid-item.react-draggable-dragging > :first-child {
   box-shadow: 0 24px 60px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.1);

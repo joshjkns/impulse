@@ -5,6 +5,7 @@ import { CoinIcon, ConfirmButton } from '@/components/common'
 import { fmtDateTime, fmtPct, fmtPx, fmtUsd, tone } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { cancelOrder, closePosition, useAccount } from '@/store/account'
+import { useShallow } from 'zustand/react/shallow'
 import { useMarkets } from '@/store/markets'
 import { PaneGrip } from './PaneGrip'
 
@@ -14,8 +15,10 @@ type TabName = (typeof TABS)[number]
 export function PositionsTabs({ className }: { className?: string }) {
   const [tab, setTab] = useState<TabName>('Positions')
   const acct = useAccount()
-  const markets = useMarkets((s) => s.markets)
-  const sym = (c: string) => markets[c]?.symbol ?? c
+  // Only the mark prices of open positions are live here; everything else is static metadata.
+  const meta = useMarkets((s) => s.meta)
+  const marks = useMarkets(useShallow((s) => acct.positions.map((p) => s.markets[p.coin]?.markPx)))
+  const sym = (c: string) => meta[c]?.symbol ?? c
   const counts: Partial<Record<TabName, number>> = { Positions: acct.positions.length, 'Open orders': acct.openOrders.length }
 
   return (
@@ -36,7 +39,7 @@ export function PositionsTabs({ className }: { className?: string }) {
         ) : tab === 'Positions' ? (
           <Table
             cols={['Market', 'Size', 'Value', 'Entry', 'Mark', 'PNL (ROE)', 'Liq. price', 'Margin', 'Funding', '']}
-            rows={acct.positions.map((p) => [
+            rows={acct.positions.map((p, i) => [
               <span className="flex items-center gap-1.5">
                 <CoinIcon coin={p.coin} className="size-4" />
                 {sym(p.coin)}
@@ -45,7 +48,7 @@ export function PositionsTabs({ className }: { className?: string }) {
               <span className={p.size > 0 ? 'text-up' : 'text-down'}>{p.size}</span>,
               fmtUsd(Math.abs(p.positionValue)),
               fmtPx(p.entryPx),
-              fmtPx(markets[p.coin]?.markPx),
+              fmtPx(marks[i]),
               <span className={tone(p.unrealizedPnl)}>
                 {fmtUsd(p.unrealizedPnl)} ({fmtPct(p.returnOnEquity * 100)})
               </span>,

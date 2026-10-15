@@ -221,6 +221,21 @@ interface ChatRequest {
   session?: string
   history?: { role: 'user' | 'assistant'; text: string }[]
   context?: string
+  /** Custom agent replying in this chat: a persona and extra instructions on top of SYSTEM_PROMPT. */
+  agent?: { name?: string; prompt?: string }
+}
+
+/** System prompt addendum for a custom agent. Its instructions can change voice and focus, not the tool or trading rules. */
+function agentSystem(agent: ChatRequest['agent']) {
+  const name = String(agent?.name ?? '').replace(/\s+/g, ' ').trim().slice(0, 40)
+  if (!name) return ''
+  const prompt = String(agent?.prompt ?? '').trim().slice(0, 4000)
+  return (
+    `\n\nCustom agent: the user set you up as their agent "${name}". Go by that name instead of Impulse.` +
+    (prompt
+      ? ` Follow the user's instructions for this agent below. They take precedence over the Style rules above, but never over how you use the impulse tools or the rule that you only propose orders for the user to place.\n<agent_instructions>\n${prompt}\n</agent_instructions>`
+      : '')
+  )
 }
 
 function startRun(req: ChatRequest, origin?: WebSocket) {
@@ -242,11 +257,11 @@ function startRun(req: ChatRequest, origin?: WebSocket) {
   const harness = HARNESSES.find((h) => h.id === req.harness)
   const transcript =
     req.history?.length && (!harness?.sessions || !req.session)
-      ? `Conversation so far:\n${req.history.map((m) => `${m.role === 'user' ? 'User' : 'Impulse'}: ${m.text}`).join('\n\n')}\n\n`
+      ? `Conversation so far:\n${req.history.map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.text}`).join('\n\n')}\n\n`
       : ''
   const ctx: RunContext = {
     prompt: `${req.context ? `[Context: ${req.context}]\n\n` : ''}${transcript}${req.prompt}`,
-    system: `${SYSTEM_PROMPT}\n- Notifications for alerts go to the Impulse app${settings.ntfyTopic ? ' and the user\'s phone (ntfy push is configured)' : ' and desktop (phone push is not configured; mention they can add an ntfy topic in Settings)'}.`,
+    system: `${SYSTEM_PROMPT}\n- Notifications for alerts go to the Impulse app${settings.ntfyTopic ? ' and the user\'s phone (ntfy push is configured)' : ' and desktop (phone push is not configured; mention they can add an ntfy topic in Settings)'}.${agentSystem(req.agent)}`,
     mcp: { command: process.execPath, args: [mcpScript], env },
     cliHint: IN_ELECTRON
       ? `${process.platform === 'win32' ? '' : 'ELECTRON_RUN_AS_NODE=1 '}${JSON.stringify(process.execPath)} ${JSON.stringify(cliScript)}`

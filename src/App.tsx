@@ -1,5 +1,5 @@
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
-import { useEffect } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { Route, Routes, useLocation, useNavigate } from 'react-router'
 import { useAccount as useWagmiAccount } from 'wagmi'
 import { ChatHost, useToggleChat } from '@/components/chat/ChatHost'
@@ -7,19 +7,44 @@ import { CommandMenu } from '@/components/shell/CommandMenu'
 import { Footer } from '@/components/shell/Footer'
 import { Notifications } from '@/components/shell/Notifications'
 import { PortfolioPanel } from '@/components/shell/PortfolioPanel'
-import { SettingsDialog } from '@/components/shell/SettingsDialog'
 import { Splash } from '@/components/shell/Splash'
 import { TopBar } from '@/components/shell/TopBar'
 import { Toaster } from '@/components/ui/sonner'
 import { useBridge } from '@/lib/bridge'
 import { nav } from '@/lib/uiTools'
-import Feed from '@/pages/Feed'
 import Home from '@/pages/Home'
-import Workspaces from '@/pages/Workspaces'
 import { useAccount } from '@/store/account'
 import { useMarkets } from '@/store/markets'
 import { usePrefs } from '@/store/prefs'
 import { useUI } from '@/store/ui'
+
+/*
+ * Code-split: Home is the landing page and stays in the main bundle; the workspace grid (react-grid-layout,
+ * widgets), the feed and the settings dialog (wallet management) load on demand and are prefetched once idle.
+ */
+const loadWorkspaces = () => import('@/pages/Workspaces')
+const loadFeed = () => import('@/pages/Feed')
+const loadSettings = () => import('@/components/shell/SettingsDialog')
+const Workspaces = lazy(loadWorkspaces)
+const Feed = lazy(loadFeed)
+const SettingsDialog = lazy(() => loadSettings().then((m) => ({ default: m.SettingsDialog })))
+
+function prefetchChunks() {
+  const idle = window.requestIdleCallback ?? ((fn: () => void) => setTimeout(fn, 1500))
+  idle(() => void Promise.all([loadWorkspaces(), loadFeed(), loadSettings()]).catch(() => undefined))
+}
+
+/** Mounts the settings dialog the first time it's opened, then keeps it (so closing still animates). */
+function LazySettings() {
+  const open = useUI((s) => s.settingsOpen)
+  const [wanted, setWanted] = useState(open)
+  if (open && !wanted) setWanted(true)
+  return wanted ? (
+    <Suspense fallback={null}>
+      <SettingsDialog />
+    </Suspense>
+  ) : null
+}
 
 export default function App() {
   const start = useMarkets((s) => s.start)
@@ -32,6 +57,7 @@ export default function App() {
   const isHome = pathname === '/'
 
   useEffect(() => void start(), [start])
+  useEffect(prefetchChunks, [])
   useEffect(() => setAddress(watching ?? address, !!watching), [address, watching, setAddress])
   useBridge()
   const navigate = useNavigate()
@@ -74,11 +100,13 @@ export default function App() {
                 transition={{ duration: 0.16, ease: [0.2, 0.9, 0.1, 1] }}
                 className="absolute inset-0"
               >
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/workspaces/:id?" element={<Workspaces />} />
-                  <Route path="/feed" element={<Feed />} />
-                </Routes>
+                <Suspense fallback={null}>
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/workspaces/:id?" element={<Workspaces />} />
+                    <Route path="/feed" element={<Feed />} />
+                  </Routes>
+                </Suspense>
               </motion.div>
             </AnimatePresence>
           </main>
@@ -87,7 +115,7 @@ export default function App() {
         {isHome && <PortfolioPanel />}
         <ChatHost />
         <CommandMenu />
-        <SettingsDialog />
+        <LazySettings />
         <Notifications />
         <Toaster />
         <Splash />

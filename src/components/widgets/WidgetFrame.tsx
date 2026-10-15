@@ -1,6 +1,6 @@
 import { Expand, GripVertical, Pencil, RefreshCw, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { LogoPulse } from '@/components/brand/Logo'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
@@ -10,13 +10,20 @@ import { WIDGETS } from './registry'
 /** Minimum time the "drawing" placeholder stays up so the reveal reads as deliberate. */
 const MIN_DRAW_MS = 900
 
-export function WidgetFrame({ tabId, widget }: { tabId: string; widget: Widget }) {
+/**
+ * Memoised: the grid re-renders on every drag/resize state change, and without this each one re-rendered
+ * every widget body (charts, books) mid-gesture.
+ */
+export const WidgetFrame = memo(function WidgetFrame({ tabId, widget }: { tabId: string; widget: Widget }) {
   const update = useWorkspaces((s) => s.updateWidget)
   const remove = useWorkspaces((s) => s.removeWidget)
   const [nonce, setNonce] = useState(0)
   const [editing, setEditing] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const mountedAt = useRef(Date.now())
+  const mountedAt = useRef(0)
+  useEffect(() => {
+    mountedAt.current = Date.now()
+  }, [])
   const drawing = widget.status === 'drawing'
   const Body = WIDGETS[widget.kind]
 
@@ -103,7 +110,7 @@ export function WidgetFrame({ tabId, widget }: { tabId: string; widget: Widget }
       </Dialog>
     </motion.div>
   )
-}
+})
 
 function Action({ children, onClick, label, className }: { children: React.ReactNode; onClick: () => void; label: string; className?: string }) {
   return (

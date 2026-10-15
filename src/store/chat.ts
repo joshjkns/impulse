@@ -1,7 +1,9 @@
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { persist } from 'zustand/middleware'
+import { deferredStorage } from '@/lib/storage'
 import { bridgeSend, useBridgeStore } from '@/lib/bridge'
 import { useAccount } from '@/store/account'
+import { agentById, IMPULSE_AGENT_ID, useAgents } from '@/store/agents'
 import { useMarkets } from '@/store/markets'
 import { usePrefs } from '@/store/prefs'
 import { useUI, type ChatMode } from '@/store/ui'
@@ -43,6 +45,8 @@ export interface Message {
   /** Provider and model that produced an assistant reply ('' model = the harness's own default). */
   harness?: string
   model?: string
+  /** Custom agent that wrote an assistant reply (unset = Impulse). */
+  agentId?: string
 }
 
 /** Provider (harness) and model a chat runs on. No model means the provider's default from Settings. */
@@ -62,6 +66,10 @@ export interface Thread {
   harness?: string
   /** Provider and model this chat runs on; unset follows the last pick (prefs). */
   pick?: ModelPick
+  /** Agent replying in this chat (unset = Impulse). */
+  agentId?: string
+  /** Agent `session` was started with; a different agent starts a fresh session. */
+  sessionAgent?: string
 }
 
 interface ChatState {
@@ -73,7 +81,9 @@ interface ChatState {
   cancel: (threadId?: string) => void
   /** Switch the active chat's provider/model; new chats start on it too. */
   setPick: (pick: ModelPick) => void
-  newThread: () => string
+  newThread: (agentId?: string) => string
+  /** Switch the active chat's agent (starting a chat with it if there is none). */
+  setAgent: (agentId: string) => void
   selectThread: (id?: string) => void
   deleteThread: (id: string) => void
   attachOrder: (runId: string | undefined, threadId: string | undefined, o: ProposedOrder) => void
@@ -135,20 +145,22 @@ export const useChat = create<ChatState>()(
         const pick = resolvePick(thread)
         const { harness } = pick
         const model = effectiveModel(pick)
+        const agent = agentById(thread.agentId)
         const runId = uid()
         const now = Date.now()
         const user: Message = { id: uid(), role: 'user', text, createdAt: now, status: 'done', steps: [] }
-        const asst: Message = { id: uid(), role: 'assistant', text: '', createdAt: now, runId, status: 'working', steps: [], harness, model }
+        const asst: Message = { id: uid(), role: 'assistant', text: '', createdAt: now, runId, status: 'working', steps: [], harness, model, agentId: agent.id }
         const history = thread.messages
           .filter((m) => m.text && m.status !== 'queued')
           .slice(-12)
           .map((m) => ({ role: m.role, text: m.text }))
-        // A harness switch mid-thread starts a fresh session on the new harness.
-        const session = thread.harness === harness ? thread.session : undefined
+        // A harness or agent switch mid-thread starts a fresh session (the transcript carries the context over),
+        // so a resumed session never keeps the previous persona's instructions.
+        const session = thread.harness === harness && (thread.sessionAgent ?? IMPULSE_AGENT_ID) === agent.id ? thread.session : undefined
         set({
           threads: get().threads.map((t) =>
             t.id === threadId
-              ? { ...t, harness, session, pick, updatedAt: now, title: t.messages.length ? t.title : text.slice(0, 48), messages: [...t.messages, user, asst] }
+              ? { ...t, harness, session, sessionAgent: agent.id, pick, updatedAt: now, title: t.messages.length ? t.title : text.slice(0, 48), messages: [...t.messages, user, asst] }
               : t,
           ),
         })
@@ -162,6 +174,8 @@ export const useChat = create<ChatState>()(
           session,
           history,
           context: context(),
+          // Custom agents: a persona and instructions layered on Impulse's own system prompt.
+          agent: agent.id !== IMPULSE_AGENT_ID ? { name: agent.name, prompt: agent.prompt } : undefined,
         })
         if (!ok)
           get().onDone(runId, {
@@ -200,10 +214,20 @@ export const useChat = create<ChatState>()(
           const id = get().activeThread
           if (id) set({ threads: get().threads.map((t) => (t.id === id ? { ...t, pick } : t)) })
         },
-        newThread() {
+        newThread(agentId = useAgents.getState().defaultAgent) {
           const id = uid()
-          set({ threads: [{ id, title: 'New chat', createdAt: Date.now(), updatedAt: Date.now(), messages: [] }, ...get().threads], activeThread: id })
+          const agent = agentById(agentId).id
+          set({
+            threads: [{ id, title: 'New chat', createdAt: Date.now(), updatedAt: Date.now(), messages: [], agentId: agent === IMPULSE_AGENT_ID ? undefined : agent }, ...get().threads],
+            activeThread: id,
+          })
           return id
+        },
+        setAgent(agentId) {
+          const id = get().activeThread
+          if (!id || !get().threads.some((t) => t.id === id)) return void get().newThread(agentId)
+          const agent = agentId === IMPULSE_AGENT_ID ? undefined : agentId
+          set({ threads: get().threads.map((t) => (t.id === id ? { ...t, agentId: agent } : t)) })
         },
         selectThread: (activeThread) => set({ activeThread }),
         deleteThread: (id) =>
@@ -260,8 +284,19 @@ export const useChat = create<ChatState>()(
     },
     {
       name: 'impulse.chat',
-      storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ threads: s.threads.slice(0, 50), activeThread: s.activeThread }),
+      storage: deferredStorage(),
+      // Tool results can be large market-data payloads; only alert cards are rendered from them later.
+      partialize: (s) => ({
+        threads: s.threads.slice(0, 50).map((t) => ({
+          ...t,
+          messages: t.messages.map((m) =>
+            m.steps.some((x) => x.result !== undefined && x.name !== 'create_alert')
+              ? { ...m, steps: m.steps.map((x) => (x.name === 'create_alert' ? x : { ...x, result: undefined, args: undefined })) }
+              : m,
+          ),
+        })),
+        activeThread: s.activeThread,
+      }),
       onRehydrateStorage: () => (s) =>
         s?.threads.forEach((t) => t.messages.forEach((m) => m.status === 'working' && ((m.status = 'error'), (m.error = 'Interrupted')))),
     },

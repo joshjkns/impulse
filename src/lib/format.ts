@@ -2,6 +2,25 @@ import { usePrefs } from '@/store/prefs'
 
 /** Number formatting tuned to how the terminal displays prices (5 significant figures, Hyperliquid style). */
 
+/*
+ * `toLocaleString(locale, opts)` builds a fresh Intl.NumberFormat on every call, which is slow enough to show up
+ * when hundreds of prices re-render a few times a second. Formatters are cached per option set instead.
+ */
+const numFmts = new Map<string, Intl.NumberFormat>()
+export function numberFormat(min: number, max = min, grouping = true) {
+  const key = `${min}|${max}|${grouping}`
+  let f = numFmts.get(key)
+  if (!f) numFmts.set(key, (f = new Intl.NumberFormat('en-US', { minimumFractionDigits: min, maximumFractionDigits: max, useGrouping: grouping })))
+  return f
+}
+const dateFmts = new Map<string, Intl.DateTimeFormat>()
+export function dateFormat(opts: Intl.DateTimeFormatOptions) {
+  const key = JSON.stringify(opts)
+  let f = dateFmts.get(key)
+  if (!f) dateFmts.set(key, (f = new Intl.DateTimeFormat('en-US', opts)))
+  return f
+}
+
 export function sigDecimals(px: number, sig = 5) {
   if (!isFinite(px) || px === 0) return 2
   const mag = Math.floor(Math.log10(Math.abs(px))) + 1
@@ -11,12 +30,12 @@ export function sigDecimals(px: number, sig = 5) {
 export function fmtPx(px: number | undefined, decimals?: number) {
   if (px == null || !isFinite(px)) return '—'
   const d = decimals ?? sigDecimals(px)
-  return px.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d })
+  return numberFormat(d).format(px)
 }
 
 export function fmtUsd(v: number | undefined, d = 2) {
   if (v == null || !isFinite(v)) return '—'
-  const s = Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d })
+  const s = numberFormat(d).format(Math.abs(v))
   return `${v < 0 ? '-' : ''}$${s}`
 }
 
@@ -51,9 +70,9 @@ export const shortAddr = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
 
 /** Follows the 24-hour clock preference in Settings → Display. */
 export function fmtClock(t: number) {
-  return new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: !usePrefs.getState().clock24h })
+  return dateFormat({ hour: 'numeric', minute: '2-digit', hour12: !usePrefs.getState().clock24h }).format(t)
 }
 
 export function fmtDateTime(t: number, opts: Intl.DateTimeFormatOptions = {}) {
-  return new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: !usePrefs.getState().clock24h, ...opts })
+  return dateFormat({ month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: !usePrefs.getState().clock24h, ...opts }).format(t)
 }

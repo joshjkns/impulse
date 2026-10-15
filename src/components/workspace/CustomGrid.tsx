@@ -187,7 +187,10 @@ export function CustomGrid({ tab }: { tab: Extract<Tab, { kind: 'custom' }> }) {
     () => (press?.kind === 'resize' ? base.map((l) => (l.i === press.id ? { ...l, ...resizeLimits(base, press.id, press.handle) } : l)) : base),
     [base, press],
   )
-  const rows = Math.max(GRID_ROWS, ...tab.layout.map((l) => l.y + l.h))
+  const bottom = Math.max(0, ...tab.layout.map((l) => l.y + l.h))
+  const rows = Math.max(GRID_ROWS, bottom)
+  /** Only a layout that runs past one screen scrolls; a fitted one stays put (handles overhang its edges). */
+  const scrolls = bottom > GRID_ROWS
 
   // The library runs the compactor on every resize tick; it reads the pre-resize layout through a ref.
   const resizeRef = useRef<{ base: Item[]; id: string; handle: ResizeHandleAxis } | null>(null)
@@ -238,7 +241,7 @@ export function CustomGrid({ tab }: { tab: Extract<Tab, { kind: 'custom' }> }) {
   return (
     <div
       ref={containerRef}
-      className={cn('custom-grid relative h-full overflow-y-auto no-scrollbar', mode && `is-${mode}`, target && 'has-swap')}
+      className={cn('custom-grid relative h-full no-scrollbar', scrolls ? 'overflow-y-auto' : 'overflow-clip', mode && `is-${mode}`, target && 'has-swap')}
       onPointerDownCapture={onPointerDownCapture}
     >
       {!tab.widgets.length && (
@@ -257,7 +260,7 @@ export function CustomGrid({ tab }: { tab: Extract<Tab, { kind: 'custom' }> }) {
             rowHeight={rowHeight}
             margin={[GAP, GAP]}
             containerPadding={[0, 0]}
-            rows={rows + 2}
+            rows={rows}
             color="rgba(255,255,255,0.025)"
             borderRadius={4}
             className={cn('pointer-events-none absolute inset-x-0 top-0 transition-opacity duration-150', mode ? 'opacity-100' : 'opacity-0')}

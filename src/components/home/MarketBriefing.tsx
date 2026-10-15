@@ -7,29 +7,32 @@ import { useBridgeStore } from '@/lib/bridge'
 import { useChat } from '@/store/chat'
 import { useMarkets, type Market } from '@/store/markets'
 
+/** Summary computed from live data, as a string so a store selector can return it without re-render churn. */
+function summarize(markets: Record<string, Market>) {
+  const list = Object.values(markets).filter((m) => m.dayNtlVlm > 2.5e7)
+  if (!list.length) return ''
+  const by = (cls: Market['assetClass']) => list.filter((m) => m.assetClass === cls)
+  const avg = (xs: Market[]) => xs.reduce((a, m) => a + m.changePct, 0) / Math.max(1, xs.length)
+  const crypto = avg(by('Crypto'))
+  const eq = avg(by('Equities'))
+  const movers = [...list].sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct)).slice(0, 2)
+  const mood = (v: number) => (v > 0.5 ? 'firmer' : v < -0.5 ? 'weaker' : 'little changed')
+  return JSON.stringify({
+    text: `Crypto is ${mood(crypto)} (${fmtPct(crypto, 1)} avg) while equities are ${mood(eq)} (${fmtPct(eq, 1)}); ${movers[0].name} leads the tape at ${fmtPct(movers[0].changePct, 1)}.`,
+    bullets: movers.map((m) => ({ coin: m.coin, text: `${m.name} ${m.changePct >= 0 ? 'up' : 'down'} ${Math.abs(m.changePct).toFixed(1)}% on the day` })),
+  })
+}
+
 /**
  * The briefing shows the latest AI-written summary (pushed by the agent via the `set_briefing`
  * tool) and falls back to a summary computed from live market data.
  */
 export function MarketBriefing() {
-  const markets = useMarkets((s) => s.markets)
+  // Re-renders only when the summary's wording changes, not on every price tick.
+  const summary = useMarkets((s) => summarize(s.markets))
   const briefing = useBridgeStore((s) => s.briefing)
   const send = useChat((s) => s.send)
-
-  const computed = useMemo(() => {
-    const list = Object.values(markets).filter((m) => m.dayNtlVlm > 2.5e7)
-    if (!list.length) return undefined
-    const by = (cls: Market['assetClass']) => list.filter((m) => m.assetClass === cls)
-    const avg = (xs: Market[]) => xs.reduce((a, m) => a + m.changePct, 0) / Math.max(1, xs.length)
-    const crypto = avg(by('Crypto'))
-    const eq = avg(by('Equities'))
-    const movers = [...list].sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct)).slice(0, 2)
-    const mood = (v: number) => (v > 0.5 ? 'firmer' : v < -0.5 ? 'weaker' : 'little changed')
-    return {
-      text: `Crypto is ${mood(crypto)} (${fmtPct(crypto, 1)} avg) while equities are ${mood(eq)} (${fmtPct(eq, 1)}); ${movers[0].name} leads the tape at ${fmtPct(movers[0].changePct, 1)}.`,
-      bullets: movers.map((m) => ({ coin: m.coin, text: `${m.name} ${m.changePct >= 0 ? 'up' : 'down'} ${Math.abs(m.changePct).toFixed(1)}% on the day` })),
-    }
-  }, [markets])
+  const computed = useMemo(() => (summary ? (JSON.parse(summary) as { text: string; bullets: { coin?: string; text: string }[] }) : undefined), [summary])
 
   const view = briefing ?? computed
 

@@ -40,8 +40,13 @@ interface PerpCtx {
   oraclePx: string
 }
 
+/** The parts of a market that never change after load. Subscribe to these when live numbers aren't needed. */
+export type MarketMeta = Pick<Market, 'coin' | 'dex' | 'symbol' | 'name' | 'icon' | 'assetClass' | 'industries' | 'region' | 'description' | 'assetId' | 'szDecimals' | 'maxLeverage' | 'onlyIsolated'>
+
 interface MarketsState {
   markets: Record<string, Market>
+  /** Static metadata, keyed like `markets`; object identity is stable for the session. */
+  meta: Record<string, MarketMeta>
   order: string[]
   loaded: boolean
   error?: string
@@ -88,24 +93,26 @@ export function marketsReady(timeoutMs = 20_000) {
 
 export const useMarkets = create<MarketsState>((set, get) => ({
   markets: {},
+  meta: {},
   order: [],
   loaded: false,
   async start() {
     if (started) return
     started = true
     try {
-      const perpDexs = await info.perpDexs()
+      // One round trip, not two: the dex list (for HIP-3 asset ids) loads alongside the markets.
+      const [perpDexs, ...results] = await Promise.all([info.perpDexs(), ...DEXES.map((dex) => info.metaAndAssetCtxs(dex ? { dex } : {}))])
       const dexIndex = (dex: Dex) => (dex === '' ? 0 : perpDexs.findIndex((d) => d?.name === dex))
-      const results = await Promise.all(DEXES.map((dex) => info.metaAndAssetCtxs(dex ? { dex } : {})))
       const markets: Record<string, Market> = {}
-      results.forEach(([meta, ctxs], di) => {
+      const meta: Record<string, MarketMeta> = {}
+      results.forEach(([dexMeta, ctxs], di) => {
         const dex = DEXES[di]
         const base = dex === '' ? 0 : 100000 + dexIndex(dex) * 10000
-        universes[dex] = meta.universe.map((u) => u.name)
-        meta.universe.forEach((u, i) => {
+        universes[dex] = dexMeta.universe.map((u) => u.name)
+        dexMeta.universe.forEach((u, i) => {
           if (u.isDelisted) return
           const cat = catalogFor(u.name)
-          const m: Market = {
+          const info: MarketMeta = {
             coin: u.name,
             dex,
             symbol: symbolOf(u.name),
@@ -119,6 +126,10 @@ export const useMarkets = create<MarketsState>((set, get) => ({
             szDecimals: u.szDecimals,
             maxLeverage: u.maxLeverage,
             onlyIsolated: !!u.onlyIsolated || dex !== '',
+          }
+          meta[u.name] = info
+          const m: Market = {
+            ...info,
             markPx: 0,
             midPx: 0,
             oraclePx: 0,
@@ -135,7 +146,7 @@ export const useMarkets = create<MarketsState>((set, get) => ({
       const order = Object.values(markets)
         .sort((a, b) => b.dayNtlVlm - a.dayNtlVlm)
         .map((m) => m.coin)
-      set({ markets, order, loaded: true })
+      set({ markets, meta, order, loaded: true })
 
       // The ctx feed fires several times a second per dex. Buffer it and flush at most every FLUSH_MS,
       // replacing only markets whose numbers moved, so subscribers re-render a few times a second instead of per message.
@@ -172,7 +183,15 @@ export const useMarkets = create<MarketsState>((set, get) => ({
   },
 }))
 
+/** The whole live market: re-renders whenever any of its numbers tick. Prefer `useMarketMeta` / `useMarketValue`. */
 export const useMarket = (coin: string | undefined) => useMarkets((s) => (coin ? s.markets[coin] : undefined))
+
+/** Static market info (name, symbol, decimals, leverage); never re-renders on price ticks. */
+export const useMarketMeta = (coin: string | undefined) => useMarkets((s) => (coin ? s.meta[coin] : undefined))
+
+/** One live number of a market; re-renders only when that number changes. */
+export const useMarketValue = <K extends keyof Market>(coin: string | undefined, key: K) =>
+  useMarkets((s) => (coin ? s.markets[coin]?.[key] : undefined))
 
 /** Resolve user-typed names ("crude oil", "CL", "btc") to a coin. Used by search and the AI tools. */
 export function resolveCoin(query: string): string | undefined {

@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronsUpDown, ChevronUp, Heart, ListFilter, PanelRight, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { memo, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { CoinIcon, LivePrice } from '@/components/common'
 import { MarketSummary } from '@/components/home/MarketSummary'
 import { useOpenMarket } from '@/components/shell/PortfolioPanel'
@@ -19,6 +19,41 @@ import { applyScan, sortMarkets } from '@/lib/scan'
 import { cn } from '@/lib/utils'
 import { useMarkets, type Market } from '@/store/markets'
 import { FEATURED_SCANS, usePrefs, type Scan, type SortKey } from '@/store/prefs'
+
+const ROW_H = 37.5
+/** Rows rendered above and below the viewport, so fast scrolling doesn't show gaps. */
+const OVERSCAN = 8
+
+/**
+ * Which rows are on screen. Only those are rendered: the full list is a few hundred markets that tick several
+ * times a second, and rendering all of them (even with content-visibility) is most of Home's CPU time.
+ */
+function useVisibleRows(scroller: RefObject<HTMLElement | null>, count: number, offset: number) {
+  const [range, setRange] = useState<[number, number]>([0, 40])
+  useEffect(() => {
+    const el = scroller.current
+    if (!el) return
+    let frame = 0
+    const measure = () => {
+      frame = 0
+      const top = Math.max(0, el.scrollTop - offset)
+      const start = Math.max(0, Math.floor(top / ROW_H) - OVERSCAN)
+      const end = Math.min(count, Math.ceil((top + el.clientHeight) / ROW_H) + OVERSCAN)
+      setRange((r) => (r[0] === start && r[1] === end ? r : [start, end]))
+    }
+    const onScroll = () => (frame ||= requestAnimationFrame(measure))
+    measure()
+    el.addEventListener('scroll', onScroll, { passive: true })
+    const ro = new ResizeObserver(onScroll)
+    ro.observe(el)
+    return () => {
+      cancelAnimationFrame(frame)
+      el.removeEventListener('scroll', onScroll)
+      ro.disconnect()
+    }
+  }, [scroller, count, offset])
+  return range
+}
 
 const COLS: { key: SortKey; label: string; w: string }[] = [
   { key: 'markPx', label: 'Last Price', w: 'w-[92px]' },
@@ -46,6 +81,13 @@ export function MarketsTable({ selected, onSelect }: { selected: string; onSelec
     const s = sort ?? scan?.sort ?? { key: 'dayNtlVlm' as SortKey, dir: 'desc' as const }
     return sortMarkets(list, s.key, s.dir)
   }, [markets, scan, favorites, extra, classes, industries, sort])
+
+  const scroller = useRef<HTMLDivElement>(null)
+  const [start, end] = useVisibleRows(scroller, rows.length, 36)
+  // Back to the top when the list itself changes (scan, filters, sort), like a fresh page.
+  useEffect(() => {
+    scroller.current?.scrollTo({ top: 0 })
+  }, [activeScan, extra, classes, industries, sort])
 
   const activeSort = sort ?? scan?.sort ?? { key: 'dayNtlVlm', dir: 'desc' }
   const toggleSort = (key: SortKey) =>
@@ -115,7 +157,7 @@ export function MarketsTable({ selected, onSelect }: { selected: string; onSelec
       </div>
 
       <div className="mt-2 flex min-h-0 flex-1">
-        <div className="min-w-0 flex-1 overflow-auto no-scrollbar">
+        <div ref={scroller} className="min-w-0 flex-1 overflow-auto no-scrollbar">
           <div className="min-w-[640px]">
             <div className="sticky top-0 z-10 flex h-9 items-center bg-panel pr-4 pl-4 text-[11.5px] text-fg-2">
               <span className="w-8" />
@@ -135,8 +177,14 @@ export function MarketsTable({ selected, onSelect }: { selected: string; onSelec
                 </button>
               ))}
             </div>
-            <motion.div key={activeScan} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }}>
-              {rows.map((m) => (
+            <motion.div
+              key={activeScan}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.18 }}
+              style={{ height: rows.length * ROW_H, paddingTop: start * ROW_H }}
+            >
+              {rows.slice(start, end).map((m) => (
                 <MarketRow
                   key={m.coin}
                   m={m}
@@ -185,13 +233,11 @@ const MarketRow = memo(
         onClick={() => onSelect(m.coin)}
         onDoubleClick={() => onOpen(m.coin)}
         className={cn(
-          'group flex h-[37.5px] cursor-pointer items-center border-t border-white/[0.035] pr-4 pl-4 text-[12.5px] transition-colors duration-100 [contain-intrinsic-size:auto_37.5px] [content-visibility:auto]',
+          'group flex h-[37.5px] cursor-pointer items-center border-t border-white/[0.035] pr-4 pl-4 text-[12.5px] transition-colors duration-100',
           selected ? 'bg-hover/70' : 'hover:bg-hover/40',
         )}
       >
-        <button onClick={(e) => (e.stopPropagation(), onFavorite(m.coin))} className="w-8 text-fg-3 transition-transform active:scale-75" aria-label="Favorite">
-          <Heart className={cn('size-3.5 transition-colors', fav ? 'fill-heart text-heart' : 'fill-[#5a5a62] text-[#5a5a62]')} />
-        </button>
+        <FavButton coin={m.coin} fav={fav} onFavorite={onFavorite} />
         <span className="flex min-w-0 flex-1 items-center gap-2.5">
           <CoinIcon coin={m.coin} className="size-[19px]" />
           <span className="truncate text-fg">{m.name}</span>
@@ -206,6 +252,18 @@ const MarketRow = memo(
   },
   // Handlers are recreated by the parent each render but always do the same thing.
   (a, b) => a.m === b.m && a.fav === b.fav && a.selected === b.selected,
+)
+
+/** Split out and memoised so a price tick doesn't rebuild the heart icon's SVG. */
+const FavButton = memo(
+  function FavButton({ coin, fav, onFavorite }: { coin: string; fav: boolean; onFavorite: (coin: string) => void }) {
+    return (
+      <button onClick={(e) => (e.stopPropagation(), onFavorite(coin))} className="w-8 text-fg-3 transition-transform active:scale-75" aria-label="Favorite">
+        <Heart className={cn('size-3.5 transition-colors', fav ? 'fill-heart text-heart' : 'fill-[#5a5a62] text-[#5a5a62]')} />
+      </button>
+    )
+  },
+  (a, b) => a.coin === b.coin && a.fav === b.fav,
 )
 
 const ToolbarButton = ({ children, className, ...p }: React.ComponentProps<'button'>) => (

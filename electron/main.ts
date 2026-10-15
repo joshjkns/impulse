@@ -26,7 +26,8 @@ const isMac = process.platform === 'darwin'
 app.setName('Impulse')
 // Same-origin storage across launches needs a real (standard, secure) scheme rather than file://.
 protocol.registerSchemesAsPrivileged([
-  { scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
+  // codeCache: V8 keeps compiled bytecode for the bundle between launches, so later starts skip most parse/compile.
+  { scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true, codeCache: true } },
 ])
 
 // A second launch just focuses the running window (see 'second-instance').
@@ -58,13 +59,37 @@ function loginShellPath(): Promise<string | undefined> {
   )
 }
 
+/**
+ * An interactive login shell can take seconds to start (oh-my-zsh, nvm, …). Use the PATH saved by the last
+ * launch straight away and refresh the saved copy in the background; only the very first launch waits.
+ */
+const pathCacheFile = () => path.join(app.getPath('userData'), 'shell-path.txt')
+async function shellPath(): Promise<string | undefined> {
+  let cached: string | undefined
+  try {
+    cached = readFileSync(pathCacheFile(), 'utf8') || undefined
+  } catch {
+    /* first launch */
+  }
+  const fresh = loginShellPath().then((p) => {
+    if (p && p !== cached)
+      try {
+        writeFileSync(pathCacheFile(), p)
+      } catch {
+        /* best effort */
+      }
+    return p
+  })
+  return cached ?? (await fresh)
+}
+
 let restarts = 0
 async function startBridge() {
   if (await bridgeRunning()) return
   const logDir = path.join(app.getPath('userData'), 'logs')
   mkdirSync(logDir, { recursive: true })
   const log = createWriteStream(path.join(logDir, 'bridge.log'), { flags: 'a' })
-  const PATH = (await loginShellPath()) ?? process.env.PATH
+  const PATH = (await shellPath()) ?? process.env.PATH
   bridge = fork(path.join(ROOT, 'bridge', 'server.ts'), [], {
     execPath: process.execPath,
     cwd: ROOT,
@@ -258,9 +283,10 @@ app.on('second-instance', () => showWindow())
 app.whenReady().then(async () => {
   registerAppProtocol()
   buildMenu()
-  // Start the bridge first so the page's first WebSocket connect usually lands; the app reconnects anyway.
-  await startBridge()
+  // Window and bridge start together: the page renders (and loads market data straight from Hyperliquid)
+  // while the bridge boots, and its WebSocket connects as soon as the bridge is listening.
   createWindow()
+  void startBridge()
   app.on('activate', () => showWindow())
 })
 

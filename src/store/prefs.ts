@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { persist } from 'zustand/middleware'
+import { deferredStorage } from '@/lib/storage'
 import type { AssetClass } from '@/lib/catalog'
 
 /** A market scan is a saved filter over the market list. AI-created scans use the same shape. */
@@ -125,7 +126,7 @@ export const usePrefs = create<PrefsState>()(
     {
       name: 'impulse.prefs',
       version: 1,
-      storage: createJSONStorage(() => localStorage),
+      storage: deferredStorage(),
       // v0 had a single model override shared by every harness; it becomes that harness's default.
       migrate: (old, version) => {
         const s = old as Partial<PrefsState> & { harnessModel?: string }

@@ -1,6 +1,6 @@
 import { Bell, Check, ChevronRight, Globe, LineChart, Loader2, X, Zap } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { OrderProposal } from '@/components/chat/OrderProposal'
 import { cn } from '@/lib/utils'
 import type { Message, Step, Thread } from '@/store/chat'
@@ -8,6 +8,8 @@ import { Bubble, TypingBubble } from './Bubble'
 import { fmtClock } from '@/lib/format'
 import { useProviderName } from './ModelPicker'
 import { RichText } from './RichText'
+import { AgentAvatar } from './Agents'
+import { IMPULSE_AGENT_ID, useAgent } from '@/store/agents'
 
 const ALERT_ICON = { bell: Bell, globe: Globe, chart: LineChart, bolt: Zap }
 
@@ -20,39 +22,64 @@ function dayLabel(t: number) {
 }
 
 export function MessageList({ thread, compact }: { thread?: Thread; compact?: boolean }) {
-  const end = useRef<HTMLDivElement>(null)
+  const scroller = useRef<HTMLDivElement>(null)
+  /** Follow new output only while the reader is at (or near) the bottom; scrolling up to read stays put. */
+  const pinned = useRef(true)
   const last = thread?.messages[thread.messages.length - 1]
-  useEffect(() => {
-    end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [thread?.messages.length, last?.text, last?.steps.length, last?.status])
+  const count = thread?.messages.length ?? 0
+  const prevCount = useRef(count)
+  // Before paint, and instantly: a smooth scroll per streamed token stacked into a lagging, floaty glide.
+  useLayoutEffect(() => {
+    const el = scroller.current
+    if (!el) return
+    // Sending a message (or switching chats) always jumps to the end.
+    if (count > prevCount.current || count < prevCount.current) pinned.current = true
+    prevCount.current = count
+    if (pinned.current) el.scrollTop = el.scrollHeight
+  }, [thread?.id, count, last?.text, last?.steps.length, last?.status, last?.orders?.length])
 
   if (!thread || !thread.messages.length) return <div className="flex-1" />
   return (
-    <div className={cn('flex-1 overflow-y-auto no-scrollbar', compact ? 'px-3 pt-2' : 'px-6 pt-3')}>
+    <div
+      ref={scroller}
+      onScroll={(e) => {
+        const el = e.currentTarget
+        pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+      }}
+      className={cn('flex-1 overflow-y-auto no-scrollbar', compact ? 'px-3 pt-2' : 'px-6 pt-3')}
+    >
       <div className="mx-auto flex max-w-[640px] flex-col gap-2 pb-3">
         <div className="mb-1 text-center text-[11px] text-fg-3">{dayLabel(thread.messages[0].createdAt)}</div>
         {thread.messages.map((m, i) => (
           <MessageView key={m.id} m={m} prev={thread.messages[i - 1]} showModel={m.role === 'assistant' && !!m.harness && changedModel(thread.messages, i)} />
         ))}
-        <div ref={end} />
       </div>
     </div>
   )
 }
 
-/** True when reply `i` ran on a different provider/model than the reply before it (or is the first). */
+/** True when reply `i` came from a different agent, provider or model than the reply before it (or is the first). */
 function changedModel(messages: Message[], i: number) {
   for (let k = i - 1; k >= 0; k--) {
     const p = messages[k]
-    if (p.role === 'assistant' && p.harness) return p.harness !== messages[i].harness || p.model !== messages[i].model
+    if (p.role === 'assistant' && p.harness)
+      return p.harness !== messages[i].harness || p.model !== messages[i].model || (p.agentId ?? IMPULSE_AGENT_ID) !== (messages[i].agentId ?? IMPULSE_AGENT_ID)
   }
   return true
 }
 
 function ModelCaption({ m }: { m: Message }) {
   const name = useProviderName()
+  const agent = useAgent(m.agentId)
   return (
     <div className="mr-auto flex items-center gap-1 text-[10.5px] text-fg-3">
+      {agent.id !== IMPULSE_AGENT_ID && (
+        <>
+          <AgentAvatar agent={agent} size={14} />
+          <span className="text-fg-2">{agent.name}</span>
+          <span>·</span>
+        </>
+      )}
       <span>{name(m.harness!)}</span>
       <span>·</span>
       <span>{m.model || 'default model'}</span>

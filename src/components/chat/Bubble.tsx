@@ -19,8 +19,9 @@ export function Bubble({
 }) {
   const user = side === 'user'
   return (
+    // No `layout` animation: it animated every change in the bubble's on-screen position, including the chat
+    // window being dragged or resized, so messages sprang along behind the window instead of moving with it.
     <motion.div
-      layout="position"
       initial={{ opacity: 0, scale: 0.92, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 700, damping: 40, mass: 0.6 }}

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { persist } from 'zustand/middleware'
+import { deferredStorage } from '@/lib/storage'
 
 export const WIDGET_KINDS = [
   'price_oi',
@@ -221,7 +222,7 @@ export const useWorkspaces = create<WorkspacesState>()(
     },
     {
       name: 'impulse.workspaces',
-      storage: createJSONStorage(() => localStorage),
+      storage: deferredStorage(),
       version: 1,
       // v0 grids were 12 x 12; scale saved layouts onto the finer 24 x 24 grid.
       migrate: (state, version) => {

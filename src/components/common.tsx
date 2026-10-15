@@ -1,11 +1,12 @@
 import { motion } from 'motion/react'
-import { useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { fmtPx } from '@/lib/format'
 import { iconUrl } from '@/lib/hl'
 import { cn } from '@/lib/utils'
 import { usePrefs } from '@/store/prefs'
 
-export function CoinIcon({ coin, className }: { coin: string; className?: string }) {
+/** Memoised: it sits in rows that re-render on every price tick but itself never changes. */
+export const CoinIcon = memo(function CoinIcon({ coin, className }: { coin: string; className?: string }) {
   const [failed, setFailed] = useState(false)
   const sym = coin.includes(':') ? coin.split(':')[1] : coin
   if (failed)
@@ -23,10 +24,10 @@ export function CoinIcon({ coin, className }: { coin: string; className?: string
       className={cn('size-5 shrink-0 rounded-md object-cover', className)}
     />
   )
-}
+})
 
 /** Tiny line chart with a soft area fill, colored by direction. Used in tickers and the market strip. */
-export function Sparkline({
+export const Sparkline = memo(function Sparkline({
   values,
   className,
   up,
@@ -62,37 +63,58 @@ export function Sparkline({
       <path d={d} fill="none" stroke={color} strokeWidth="1.4" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
     </svg>
   )
+})
+
+/*
+ * Price flashes are cleared by one shared timer rather than a setTimeout per price: a market table ticking
+ * a few hundred prices a second otherwise spends real time just scheduling and cancelling timers.
+ */
+const FLASH_MS = 450
+const flashing = new Map<HTMLElement, number>()
+let flashTimer: ReturnType<typeof setInterval> | undefined
+function flash(node: HTMLElement, dir: 'up' | 'down') {
+  node.dataset.flash = dir
+  flashing.set(node, performance.now() + FLASH_MS)
+  flashTimer ??= setInterval(() => {
+    const now = performance.now()
+    for (const [n, until] of flashing)
+      if (until <= now) {
+        delete n.dataset.flash
+        flashing.delete(n)
+      }
+    if (!flashing.size) {
+      clearInterval(flashTimer)
+      flashTimer = undefined
+    }
+  }, 100)
 }
 
-/** Price that briefly tints green/red when it ticks — matches the terminal's subtle live feel. */
-export function LivePrice({ value, decimals, className }: { value: number; decimals?: number; className?: string }) {
+/**
+ * Price that briefly tints green/red when it ticks — matches the terminal's subtle live feel.
+ * The flash is a data attribute set on the element directly (styled in index.css), so a tick costs one render, not three.
+ */
+export const LivePrice = memo(function LivePrice({ value, decimals, className }: { value: number; decimals?: number; className?: string }) {
+  const el = useRef<HTMLSpanElement>(null)
   const prev = useRef(value)
-  const [flash, setFlash] = useState<'up' | 'down' | null>(null)
   const enabled = usePrefs((s) => s.priceFlash)
   useEffect(() => {
-    if (value === prev.current) return
-    if (!enabled) {
-      prev.current = value
-      return
-    }
-    setFlash(value > prev.current ? 'up' : 'down')
+    const node = el.current
+    if (value === prev.current || !node) return
+    const dir = value > prev.current ? 'up' : 'down'
     prev.current = value
-    const t = setTimeout(() => setFlash(null), 450)
-    return () => clearTimeout(t)
+    if (enabled) flash(node, dir)
   }, [value, enabled])
+  useEffect(() => {
+    const node = el.current
+    return () => void (node && flashing.delete(node))
+  }, [])
   return (
-    <span
-      className={cn(
-        'num transition-colors duration-300',
-        flash === 'up' && 'text-up',
-        flash === 'down' && 'text-down',
-        className,
-      )}
-    >
+    // No colour transition: on a table of hundreds of prices, each tick's transitionrun/start/end events add up.
+    <span ref={el} className={cn('num', className)}>
       {fmtPx(value, decimals)}
     </span>
   )
-}
+})
 
 /** A button that, when "Confirm orders" is on, needs a second press within 3s before it fires. */
 export function ConfirmButton({ onConfirm, children, ...p }: Omit<ComponentProps<'button'>, 'onClick'> & { onConfirm: () => void }) {
