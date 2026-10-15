@@ -66,7 +66,8 @@ export function TransferDialog({ mode, onClose }: { mode: 'deposit' | 'withdraw'
     query: { enabled: !!address && mode === 'deposit' },
   })
   const arbUsdc = bal != null ? Number(formatUnits(bal, 6)) : 0
-  const max = mode === 'deposit' ? arbUsdc : Math.max(0, withdrawable - 1)
+  // Hyperliquid takes the $1 withdrawal fee out of the amount sent, so the whole balance is withdrawable.
+  const max = mode === 'deposit' ? arbUsdc : Math.max(0, Math.floor(withdrawable * 100) / 100)
   const n = Number(amount) || 0
   const minimum = mode === 'deposit' ? 5 : 2
 
@@ -110,7 +111,10 @@ export function TransferDialog({ mode, onClose }: { mode: 'deposit' | 'withdraw'
           </button>
           <span className="text-[12px] text-fg-2">USDC</span>
         </label>
-        <div className="num -mt-1 text-[11.5px] text-fg-2">Available: {fmtUsd(max)}</div>
+        <div className="num -mt-1 flex justify-between text-[11.5px] text-fg-2">
+          <span>Available: {fmtUsd(max)}</span>
+          {mode === 'withdraw' && n > 0 && <span>You receive: {fmtUsd(Math.max(0, n - 1))}</span>}
+        </div>
         <button
           disabled={busy || n < minimum || n > max + 1e-9}
           onClick={submit}
